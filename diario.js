@@ -86,6 +86,7 @@ let appBloqueado = false;
 let pinIdleTimer = null;
 let lancBuscaTermo = '';
 let csvImportPreview = null;
+let painelAnoAtivo = '';
 
 const PERFIS_PADRAO = [
   { id: 'pessoal', nome: 'Pessoal' },
@@ -2266,6 +2267,130 @@ function renderEvolucaoMensal() {
   );
 }
 
+function renderPainelAnual() {
+  const sel = $('selAnoPainel');
+  const body = $('painelAnualBody');
+  const vazio = $('painelAnualVazio');
+  if (!sel || !body || !vazio) return;
+
+  const anos = [...new Set((index.meses || []).map((ch) => String(ch).slice(0, 4)).filter(Boolean))].sort();
+  if (!anos.length) {
+    sel.replaceChildren();
+    body.replaceChildren();
+    vazio.hidden = false;
+    return;
+  }
+
+  const anoPadrao = String(index.mesAtivo || '').slice(0, 4);
+  if (!painelAnoAtivo || !anos.includes(painelAnoAtivo)) {
+    painelAnoAtivo = anos.includes(anoPadrao) ? anoPadrao : anos[anos.length - 1];
+  }
+
+  sel.replaceChildren(
+    ...anos.map((ano) => {
+      const opt = document.createElement('option');
+      opt.value = ano;
+      opt.textContent = ano;
+      if (ano === painelAnoAtivo) opt.selected = true;
+      return opt;
+    })
+  );
+
+  let totalRec = 0;
+  let totalGasto = 0;
+  let totalSaldo = 0;
+  let temDados = false;
+
+  body.replaceChildren(
+    ...Array.from({ length: 12 }, (_, i) => {
+      const mes = `${painelAnoAtivo}-${String(i + 1).padStart(2, '0')}`;
+      const tr = document.createElement('tr');
+      const nomeMes = MESES_PT[i];
+
+      let rec = 0;
+      let gasto = 0;
+      let saldo = 0;
+      const existe = (index.meses || []).includes(mes);
+
+      if (existe) {
+        const resumo = resumoDoMes(mes);
+        rec = resumo.totalR + resumo.extras.rec;
+        gasto = resumo.totalG + resumo.extras.gasto;
+        saldo = resumo.saldoGeral;
+        totalRec += rec;
+        totalGasto += gasto;
+        totalSaldo += saldo;
+        if (rec > 0 || gasto > 0 || saldo !== 0) temDados = true;
+        tr.style.cursor = 'pointer';
+        tr.title = `Abrir ${rotuloMes(mes)}`;
+        tr.addEventListener('click', () => trocarMes(mes));
+      }
+
+      tr.innerHTML = `<th>${nomeMes}</th><td>${fmt.format(rec)}</td><td>${fmt.format(gasto)}</td><td>${fmt.format(saldo)}</td>`;
+      if (!existe) {
+        const mesCell = tr.querySelector('th');
+        const addBtn = document.createElement('button');
+        addBtn.type = 'button';
+        addBtn.className = 'btn-mini-add-mes';
+        addBtn.textContent = '+ Novo mês';
+        addBtn.title = `Criar ${rotuloMes(mes)}`;
+        addBtn.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          persistir();
+          if (!index.meses.includes(mes)) index.meses.push(mes);
+          index.meses.sort();
+          index.mesAtivo = mes;
+          localStorage.setItem(STORAGE_MES(mes, index.activeProfileId), JSON.stringify(mesPadrao(mes)));
+          localStorage.setItem(STORAGE_IDX, JSON.stringify(index));
+          estado = { ...index.global, ...carregarMes(mes, index.activeProfileId) };
+          render();
+          toast(`${rotuloMes(mes)} criado.`);
+        });
+        mesCell.append(' ', addBtn);
+      }
+      return tr;
+    })
+  );
+
+  $('anualRec').textContent = fmt.format(totalRec);
+  $('anualGasto').textContent = fmt.format(totalGasto);
+  $('anualSaldo').textContent = fmt.format(totalSaldo);
+  $('anualSaldo').style.color = totalSaldo < 0 ? 'var(--alerta)' : 'var(--destaque)';
+
+  const prevAno = String(Number(painelAnoAtivo) - 1);
+  let prevRec = 0;
+  let prevGasto = 0;
+  let prevSaldo = 0;
+  if (anos.includes(prevAno)) {
+    for (let i = 0; i < 12; i += 1) {
+      const mes = `${prevAno}-${String(i + 1).padStart(2, '0')}`;
+      if (!(index.meses || []).includes(mes)) continue;
+      const resumo = resumoDoMes(mes);
+      prevRec += resumo.totalR + resumo.extras.rec;
+      prevGasto += resumo.totalG + resumo.extras.gasto;
+      prevSaldo += resumo.saldoGeral;
+    }
+  }
+
+  const deltaPct = (atual, anterior) => {
+    if (!anterior) return null;
+    return ((atual - anterior) / Math.abs(anterior)) * 100;
+  };
+  const fmtDelta = (pct) => (pct == null ? 'Sem base' : `${pct > 0 ? '+' : ''}${pct.toFixed(1)}%`);
+
+  const compRec = deltaPct(totalRec, prevRec);
+  const compGasto = deltaPct(totalGasto, prevGasto);
+  const compSaldo = deltaPct(totalSaldo, prevSaldo);
+  $('anualCompRec').textContent = fmtDelta(compRec);
+  $('anualCompGasto').textContent = fmtDelta(compGasto);
+  $('anualCompSaldo').textContent = fmtDelta(compSaldo);
+  $('anualCompRec').style.color = compRec == null ? 'var(--tinta-suave)' : (compRec >= 0 ? 'var(--destaque)' : 'var(--alerta)');
+  $('anualCompGasto').style.color = compGasto == null ? 'var(--tinta-suave)' : (compGasto <= 0 ? 'var(--destaque)' : 'var(--alerta)');
+  $('anualCompSaldo').style.color = compSaldo == null ? 'var(--tinta-suave)' : (compSaldo >= 0 ? 'var(--destaque)' : 'var(--alerta)');
+
+  vazio.hidden = temDados;
+}
+
 function atualizarTotais() {
   const totalR = somaItens(estado.receitas);
   const totalG = somaItens(estado.gastos);
@@ -2316,6 +2441,7 @@ function render() {
   renderListasTexto();
   renderSonhos();
   atualizarTotais();
+  renderPainelAnual();
   atualizarLabelNotifMeta();
   atualizarStatusSync();
 }
@@ -2426,6 +2552,10 @@ function bindEventos() {
   $('btnRenomearPerfil')?.addEventListener('click', () => renomearPerfilFluxo());
   $('btnRemoverPerfil')?.addEventListener('click', () => removerPerfilFluxo());
   $('selMes').addEventListener('change', (e) => trocarMes(e.target.value));
+  $('selAnoPainel')?.addEventListener('change', (e) => {
+    painelAnoAtivo = String(e.target.value || '');
+    renderPainelAnual();
+  });
 
   $('dataRef').addEventListener('change', (e) => {
     estado.dataRef = e.target.value;

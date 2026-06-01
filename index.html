@@ -141,6 +141,53 @@
       <p class="grafico-vazio" id="evolucaoVazio" hidden>Crie mais meses para acompanhar a evolução.</p>
     </section>
 
+    <section class="panel" aria-labelledby="titPainelAnual">
+      <h2 id="titPainelAnual"><span class="num">↺</span> Dashboard anual</h2>
+      <div class="evolucao-topo">
+        <p class="panel-hint">Visão consolidada por mês no perfil atual.</p>
+        <label class="field-inline">
+          <span>Ano</span>
+          <select id="selAnoPainel" aria-label="Selecionar ano do dashboard"></select>
+        </label>
+      </div>
+      <div class="resumo-extras" id="painelComparativoWrap">
+        <div class="resumo-item mini">
+          <span>Receitas vs ano anterior</span>
+          <output id="anualCompRec">—</output>
+        </div>
+        <div class="resumo-item mini">
+          <span>Gastos vs ano anterior</span>
+          <output id="anualCompGasto">—</output>
+        </div>
+        <div class="resumo-item mini">
+          <span>Saldo vs ano anterior</span>
+          <output id="anualCompSaldo">—</output>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="controle-semana">
+          <thead>
+            <tr>
+              <th>Mês</th>
+              <th>Receitas</th>
+              <th>Gastos</th>
+              <th>Saldo</th>
+            </tr>
+          </thead>
+          <tbody id="painelAnualBody"></tbody>
+          <tfoot>
+            <tr>
+              <th>Total do ano</th>
+              <td id="anualRec">R$ 0,00</td>
+              <td id="anualGasto">R$ 0,00</td>
+              <td id="anualSaldo">R$ 0,00</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      <p class="grafico-vazio" id="painelAnualVazio" hidden>Sem dados para este ano.</p>
+    </section>
+
     <section class="panel" aria-labelledby="titControle">
       <h2 id="titControle"><span class="num">4.</span> Controle diário</h2>
       <p class="panel-hint">Registre receitas e gastos de cada dia da semana (valores do dia, não do mês).</p>

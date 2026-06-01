@@ -603,6 +603,49 @@ input:focus {
   color: var(--tinta);
 }
 
+#painelAnualBody td,
+#painelAnualBody th {
+  font-size: 0.82rem;
+}
+
+#painelAnualBody td:last-child,
+#anualSaldo {
+  font-weight: 700;
+}
+
+#painelAnualBody tr[title] {
+  cursor: pointer;
+}
+
+#painelAnualBody tr[title]:hover {
+  background: rgba(26, 95, 74, 0.08);
+}
+
+.btn-mini-add-mes {
+  margin-left: 0.35rem;
+  border: 1px solid var(--linha);
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--tinta-suave);
+  border-radius: 999px;
+  font: inherit;
+  font-size: 0.66rem;
+  padding: 0.1rem 0.4rem;
+  cursor: pointer;
+}
+
+.btn-mini-add-mes:hover {
+  border-color: var(--destaque);
+  color: var(--destaque);
+}
+
+#painelComparativoWrap {
+  margin-bottom: 0.6rem;
+}
+
+#painelComparativoWrap output {
+  font-weight: 700;
+}
+
 .lista-lancamentos {
   list-style: none;
   margin: 0;
