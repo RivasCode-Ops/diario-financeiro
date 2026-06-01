@@ -2391,6 +2391,128 @@ function renderPainelAnual() {
   vazio.hidden = temDados;
 }
 
+function csvEscape(v) {
+  const s = String(v ?? '');
+  if (/[;"\n\r,]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+}
+
+function exportarPainelAnualCsv() {
+  if (!painelAnoAtivo) {
+    toast('Selecione um ano no dashboard anual.');
+    return;
+  }
+  const linhas = [['mes', 'receitas', 'gastos', 'saldo']];
+  let totalRec = 0;
+  let totalGasto = 0;
+  let totalSaldo = 0;
+
+  for (let i = 0; i < 12; i += 1) {
+    const mes = `${painelAnoAtivo}-${String(i + 1).padStart(2, '0')}`;
+    let rec = 0;
+    let gasto = 0;
+    let saldo = 0;
+    if ((index.meses || []).includes(mes)) {
+      const resumo = resumoDoMes(mes);
+      rec = resumo.totalR + resumo.extras.rec;
+      gasto = resumo.totalG + resumo.extras.gasto;
+      saldo = resumo.saldoGeral;
+    }
+    totalRec += rec;
+    totalGasto += gasto;
+    totalSaldo += saldo;
+    linhas.push([rotuloMes(mes), rec.toFixed(2), gasto.toFixed(2), saldo.toFixed(2)]);
+  }
+
+  linhas.push(['TOTAL', totalRec.toFixed(2), totalGasto.toFixed(2), totalSaldo.toFixed(2)]);
+  const csv = linhas.map((cols) => cols.map(csvEscape).join(';')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  const perfilNome = (perfilAtual()?.nome || index.activeProfileId || 'perfil').replace(/[^\w-]+/g, '-');
+  a.download = `diario-anual-${perfilNome}-${painelAnoAtivo}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('CSV anual exportado.');
+}
+
+function exportarPainelAnualPdf() {
+  if (!painelAnoAtivo) {
+    toast('Selecione um ano no dashboard anual.');
+    return;
+  }
+  const perfilNome = perfilAtual()?.nome || index.activeProfileId || 'Perfil';
+  const linhas = [];
+  let totalRec = 0;
+  let totalGasto = 0;
+  let totalSaldo = 0;
+
+  for (let i = 0; i < 12; i += 1) {
+    const mes = `${painelAnoAtivo}-${String(i + 1).padStart(2, '0')}`;
+    let rec = 0;
+    let gasto = 0;
+    let saldo = 0;
+    if ((index.meses || []).includes(mes)) {
+      const resumo = resumoDoMes(mes);
+      rec = resumo.totalR + resumo.extras.rec;
+      gasto = resumo.totalG + resumo.extras.gasto;
+      saldo = resumo.saldoGeral;
+    }
+    totalRec += rec;
+    totalGasto += gasto;
+    totalSaldo += saldo;
+    linhas.push(
+      `<tr><td>${escaparHtml(MESES_PT[i])}</td><td>${fmt.format(rec)}</td><td>${fmt.format(gasto)}</td><td>${fmt.format(saldo)}</td></tr>`
+    );
+  }
+
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard anual ${painelAnoAtivo}</title>
+  <style>
+    body{font-family:Arial,sans-serif;padding:18px;color:#111827}
+    h1{margin:0 0 4px;font-size:22px}
+    p{margin:0 0 12px;color:#4b5563}
+    .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0 14px}
+    .card{border:1px solid #d1d5db;border-radius:8px;padding:8px 10px}
+    .card small{display:block;color:#6b7280}
+    .card strong{font-size:18px}
+    table{width:100%;border-collapse:collapse}
+    th,td{border:1px solid #d1d5db;padding:7px;text-align:left;font-size:13px}
+    th{background:#f3f4f6}
+  </style>
+</head>
+<body>
+  <h1>Dashboard anual ${escaparHtml(painelAnoAtivo)}</h1>
+  <p>Perfil: ${escaparHtml(perfilNome)} • Gerado em ${escaparHtml(new Date().toLocaleString('pt-BR'))}</p>
+  <div class="cards">
+    <div class="card"><small>Receitas</small><strong>${fmt.format(totalRec)}</strong></div>
+    <div class="card"><small>Gastos</small><strong>${fmt.format(totalGasto)}</strong></div>
+    <div class="card"><small>Saldo</small><strong>${fmt.format(totalSaldo)}</strong></div>
+  </div>
+  <table>
+    <thead><tr><th>Mês</th><th>Receitas</th><th>Gastos</th><th>Saldo</th></tr></thead>
+    <tbody>
+      ${linhas.join('')}
+      <tr><th>Total</th><th>${fmt.format(totalRec)}</th><th>${fmt.format(totalGasto)}</th><th>${fmt.format(totalSaldo)}</th></tr>
+    </tbody>
+  </table>
+  <script>window.onload=()=>{window.focus();window.print();};</script>
+</body>
+</html>`;
+
+  const win = window.open('', '_blank');
+  if (!win) {
+    toast('Não foi possível abrir a janela de impressão.');
+    return;
+  }
+  win.document.write(html);
+  win.document.close();
+}
+
 function atualizarTotais() {
   const totalR = somaItens(estado.receitas);
   const totalG = somaItens(estado.gastos);
@@ -2555,6 +2677,12 @@ function bindEventos() {
   $('selAnoPainel')?.addEventListener('change', (e) => {
     painelAnoAtivo = String(e.target.value || '');
     renderPainelAnual();
+  });
+  $('btnExportarAnualCsv')?.addEventListener('click', () => {
+    exportarPainelAnualCsv();
+  });
+  $('btnExportarAnualPdf')?.addEventListener('click', () => {
+    exportarPainelAnualPdf();
   });
 
   $('dataRef').addEventListener('change', (e) => {
