@@ -14,6 +14,7 @@ const STORAGE_SYNC_GIST_ID = 'diario-financeiro-sync-gist-id-v1';
 const STORAGE_SYNC_GH_TOKEN = 'diario-financeiro-sync-gh-token-v1';
 const STORAGE_SYNC_LAST_PUSH_AT = 'diario-financeiro-sync-last-push-at-v1';
 const STORAGE_SYNC_LAST_PULL_AT = 'diario-financeiro-sync-last-pull-at-v1';
+const STORAGE_THEME = 'diario-financeiro-theme-v1';
 const SYNC_GIST_FILE = 'diario-financeiro-backup.json';
 
 const MESES_PT = [
@@ -87,6 +88,7 @@ let pinIdleTimer = null;
 let lancBuscaTermo = '';
 let csvImportPreview = null;
 let painelAnoAtivo = '';
+let temaAtual = 'light';
 
 const PERFIS_PADRAO = [
   { id: 'pessoal', nome: 'Pessoal' },
@@ -233,6 +235,23 @@ function atualizarStatusSync() {
   const pushAt = fmtSyncMomento(localStorage.getItem(STORAGE_SYNC_LAST_PUSH_AT));
   const pullAt = fmtSyncMomento(localStorage.getItem(STORAGE_SYNC_LAST_PULL_AT));
   el.textContent = `Sync ok • envio: ${pushAt} • baixa: ${pullAt}`;
+}
+
+function carregarTema() {
+  const raw = localStorage.getItem(STORAGE_THEME);
+  return raw === 'dark' ? 'dark' : 'light';
+}
+
+function aplicarTema(tema) {
+  temaAtual = tema === 'dark' ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', temaAtual);
+  localStorage.setItem(STORAGE_THEME, temaAtual);
+  const btn = $('btnTema');
+  if (btn) btn.textContent = `Tema: ${temaAtual === 'dark' ? 'escuro' : 'claro'}`;
+}
+
+function alternarTema() {
+  aplicarTema(temaAtual === 'dark' ? 'light' : 'dark');
 }
 
 async function gistRequest(path, { method = 'GET', body } = {}) {
@@ -2566,6 +2585,7 @@ function render() {
   renderPainelAnual();
   atualizarLabelNotifMeta();
   atualizarStatusSync();
+  aplicarTema(temaAtual);
 }
 
 function mesAnteriorChave() {
@@ -2678,6 +2698,7 @@ function bindEventos() {
     painelAnoAtivo = String(e.target.value || '');
     renderPainelAnual();
   });
+  $('btnTema')?.addEventListener('click', () => alternarTema());
   $('btnExportarAnualCsv')?.addEventListener('click', () => {
     exportarPainelAnualCsv();
   });
@@ -3027,6 +3048,7 @@ function initPwa() {
 bindEventos();
 initPwa();
 evolucaoModo = carregarModoEvolucao();
+temaAtual = carregarTema();
 popularSelectCategorias();
 instalarMonitorInatividade();
 if (!localStorage.getItem(STORAGE_MES(index.mesAtivo, index.activeProfileId))) {
