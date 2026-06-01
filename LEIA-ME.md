@@ -14,6 +14,12 @@ GitHub: https://github.com/RivasCode-Ops/diario-financeiro
 
 A porta **8765** é do app **FREEDOM** — o Diário usa **8786**.
 
+### Não conecta?
+
+1. Deve aparecer a janela **Diario Financeiro Servidor** com `Serving HTTP on 127.0.0.1 port 8786`.
+2. Se não abrir, instale [Python](https://www.python.org/downloads/) ou execute `Parar-Diario-Financeiro.bat` e tente de novo.
+3. Celular na mesma Wi‑Fi: use `Iniciar-Diario-Financeiro-Rede.bat`.
+
 ## Funcionalidades
 
 - Receitas e gastos fixos editáveis com totais automáticos
