@@ -1,4 +1,4 @@
-const CACHE = 'diario-financeiro-v3';
+const CACHE = 'diario-financeiro-v4';
 const PRECACHE = [
   './',
   './index.html',

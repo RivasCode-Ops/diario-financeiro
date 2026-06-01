@@ -2,6 +2,7 @@
  * Shell fintech — dados reais (diario.js) + sync automático Gist.
  */
 const STORAGE_THEME = 'diario-financeiro-theme-v1';
+const STORAGE_SYNC_PROMPT = 'diario-financeiro-sync-prompt-v1';
 let promptInstalar = null;
 let snapshotCache = null;
 
@@ -414,6 +415,38 @@ function fecharModalLancamento() {
   $('#modalNovo')?.classList.remove('is-open');
 }
 
+function abrirModalSync() {
+  const cfg = api()?.obterSyncConfig?.() || {};
+  const form = $('#formSync');
+  if (form) {
+    const gid = form.querySelector('[name="gistId"]');
+    if (gid) gid.value = cfg.gistId || '';
+    const tok = form.querySelector('[name="token"]');
+    if (tok) tok.value = '';
+    if (tok && cfg.temToken) tok.placeholder = 'Token já salvo — cole só para trocar';
+  }
+  const st = $('#syncModalStatus');
+  if (st) st.hidden = true;
+  $('#modalSync')?.classList.add('is-open');
+  setView('configuracoes');
+}
+
+function fecharModalSync() {
+  $('#modalSync')?.classList.remove('is-open');
+}
+
+function talvezMostrarSyncInicial() {
+  if (api()?.syncConfigurado?.()) return;
+  try {
+    if (localStorage.getItem(STORAGE_SYNC_PROMPT) === '1') return;
+    localStorage.setItem(STORAGE_SYNC_PROMPT, '1');
+  } catch { /* ignore */ }
+  setTimeout(() => {
+    toast('Configure o sync para igualar celular e notebook.');
+    abrirModalSync();
+  }, 900);
+}
+
 function bindNav() {
   document.body.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-view]');
@@ -466,7 +499,56 @@ function bindNav() {
     toast('Lançamento salvo.');
   });
 
-  $('#btnSyncConfig')?.addEventListener('click', () => api()?.syncConfigurar?.());
+  $('#btnSyncConfig')?.addEventListener('click', abrirModalSync);
+  $('#btnSyncModalFechar')?.addEventListener('click', fecharModalSync);
+  $('#modalSyncBackdrop')?.addEventListener('click', fecharModalSync);
+  $('#formSync')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const st = $('#syncModalStatus');
+    const btn = e.target.querySelector('[type="submit"]');
+    const fd = new FormData(e.target);
+    const token = String(fd.get('token') || '').trim();
+    const gistId = String(fd.get('gistId') || '').trim();
+    const cfg = api()?.obterSyncConfig?.() || {};
+    if (!token && !cfg.temToken) {
+      toast('Cole o token GitHub com permissão gist.');
+      return;
+    }
+    if (btn) btn.disabled = true;
+    if (st) {
+      st.hidden = false;
+      st.className = 'sync-modal-status';
+      st.textContent = 'Sincronizando…';
+    }
+    try {
+      const id = await api()?.salvarSync?.({
+        token,
+        gistId,
+        criarGistSeVazio: true
+      });
+      if (st) {
+        st.className = 'sync-modal-status ok';
+        st.textContent = `Pronto. Gist: ${id?.slice(0, 8)}… — use o mesmo ID no outro aparelho.`;
+      }
+      refreshUi();
+      atualizarChipSync('ok');
+      toast('Sync ativo em todos os aparelhos com o mesmo Gist.');
+      setTimeout(fecharModalSync, 1800);
+    } catch (err) {
+      if (st) {
+        st.className = 'sync-modal-status err';
+        st.textContent =
+          err?.message === 'sem-token'
+            ? 'Informe o token GitHub.'
+            : err?.message === 'auth'
+              ? 'Token inválido ou sem permissão gist.'
+              : 'Não foi possível sincronizar. Verifique token e internet.';
+      }
+      atualizarChipSync('erro');
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  });
   $('#btnSyncManual')?.addEventListener('click', async () => {
     try {
       atualizarChipSync('sync');
@@ -546,6 +628,7 @@ async function iniciarApp() {
   }
   api()._notifyChange = refreshUi;
   api()._syncStatus = atualizarChipSync;
+  api()._abrirModalSync = abrirModalSync;
   aplicarTema(carregarTema());
   renderSidebarNav();
   renderBottomNav();
@@ -564,6 +647,7 @@ async function iniciarApp() {
   const toggle = $('#toggleDark');
   if (toggle) toggle.classList.toggle('is-on', document.documentElement.getAttribute('data-theme') === 'dark');
   renderConfigSync();
+  talvezMostrarSyncInicial();
 }
 
 function mostrarErroBoot(msg) {

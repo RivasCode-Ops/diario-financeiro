@@ -251,6 +251,7 @@
               <button type="button" class="btn btn--ghost" id="btnSyncConfig">Configurar sync</button>
               <button type="button" class="btn btn--primary" id="btnSyncManual">Sincronizar agora</button>
             </div>
+            <p class="sync-hint">Token em <a href="https://github.com/settings/tokens/new?scopes=gist&description=Diario%20Financeiro" target="_blank" rel="noopener">github.com/settings/tokens</a> (marque <strong>gist</strong>). O ID do Gist é opcional — o app pode criar a nuvem sozinho.</p>
             <div class="settings-row">
               <div>
                 <strong style="font-size:var(--text-sm)">Sync automático</strong>
@@ -309,6 +310,27 @@
     <div class="menu-sheet__panel">
       <h3 style="margin:0 0 var(--space-4);font-size:var(--text-lg)">Mais</h3>
       <ul class="nav-list" id="menuSheetList"></ul>
+    </div>
+  </div>
+
+  <div class="modal" id="modalSync" role="dialog" aria-modal="true" aria-labelledby="modalSyncTitle">
+    <div class="modal__backdrop" id="modalSyncBackdrop"></div>
+    <div class="modal__panel card">
+      <div class="card__head">
+        <h3 id="modalSyncTitle">Sync celular + notebook</h3>
+        <button type="button" class="btn btn--ghost" id="btnSyncModalFechar">Fechar</button>
+      </div>
+      <p class="sync-hint" style="margin:0 0 var(--space-4)">Use o <strong>mesmo token e Gist</strong> no celular e no PC. Os dados ficam iguais automaticamente.</p>
+      <form id="formSync" class="form-stack">
+        <label>Token GitHub (gist)
+          <input type="password" name="token" autocomplete="off" placeholder="ghp_…" />
+        </label>
+        <label>ID do Gist <span style="font-weight:400;color:var(--text-tertiary)">(opcional)</span>
+          <input type="text" name="gistId" placeholder="Deixe vazio para criar nuvem nova" />
+        </label>
+        <button type="submit" class="btn btn--primary" style="width:100%">Salvar e sincronizar</button>
+      </form>
+      <p id="syncModalStatus" class="sync-modal-status" hidden></p>
     </div>
   </div>
 

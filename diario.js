@@ -294,14 +294,57 @@ async function gistRequest(path, { method = 'GET', body } = {}) {
   return res.json();
 }
 
+async function syncCriarGistNuvem() {
+  persistir();
+  const backup = exportarBackup();
+  const gist = await gistRequest('/gists', {
+    method: 'POST',
+    body: {
+      description: 'Diário Financeiro — backup automático',
+      public: false,
+      files: {
+        [SYNC_GIST_FILE]: { content: JSON.stringify(backup, null, 2) }
+      }
+    }
+  });
+  if (!gist?.id) throw new Error('sem-gist');
+  salvarSyncConfig({ gistId: gist.id });
+  registrarSyncPush();
+  return gist.id;
+}
+
+async function syncSalvarConfiguracao({ gistId, token, criarGistSeVazio = true } = {}) {
+  const atual = carregarSyncConfig();
+  const t = String(token != null && token !== '' ? token : atual.token || '').trim();
+  if (!t) throw new Error('sem-token');
+  const gid = String(gistId != null && gistId !== '' ? gistId : atual.gistId || '').trim();
+  salvarSyncConfig({ token: t, gistId: gid });
+  let id = carregarSyncConfig().gistId;
+  if (!id && criarGistSeVazio) {
+    id = await syncCriarGistNuvem();
+  }
+  if (!id) throw new Error('sem-gist');
+  atualizarStatusSync();
+  await syncAutoNaAbertura();
+  return id;
+}
+
+function obterSyncConfigUi() {
+  const { gistId, token } = carregarSyncConfig();
+  return { gistId: gistId || '', temToken: Boolean(token) };
+}
+
 async function syncConfigurarFluxo() {
+  if (window.__DIARIO_UI_SHELL__ && window.DiarioFinanceiro?._abrirModalSync) {
+    window.DiarioFinanceiro._abrirModalSync();
+    return;
+  }
   const atual = carregarSyncConfig();
   const gistId = prompt('ID do Gist para sincronização:', atual.gistId || '');
   if (!gistId) return;
   const token = prompt('Token GitHub (escopo gist):', atual.token || '');
   if (!token) return;
-  salvarSyncConfig({ gistId, token });
-  atualizarStatusSync();
+  await syncSalvarConfiguracao({ gistId, token, criarGistSeVazio: false });
   toast('Sync configurado.');
 }
 
@@ -3400,6 +3443,9 @@ window.DiarioFinanceiro = {
     return true;
   },
   syncConfigurar: syncConfigurarFluxo,
+  salvarSync: syncSalvarConfiguracao,
+  obterSyncConfig: obterSyncConfigUi,
+  criarGistNuvem: syncCriarGistNuvem,
   syncEnviar: syncEnviarFluxo,
   syncBaixar: (opts) => syncBaixarFluxo(opts || {}),
   syncAutoHabilitado: autoSyncHabilitado,
