@@ -1,6 +1,6 @@
 @echo off
 setlocal
-set "PORT=8786"
+set "PORT=8790"
 echo Encerrando servidor na porta %PORT%...
 for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":%PORT%" ^| findstr "LISTENING"') do (
   echo PID %%a

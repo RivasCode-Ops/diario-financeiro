@@ -1,0 +1,30 @@
+DIARIO FINANCEIRO — COMO USAR (simples)
+======================================
+
+NO COMPUTADOR (todo dia)
+  Duplo clique: ABRIR-DIARIO.bat
+  Abre: http://127.0.0.1:8790/
+
+NO CELULAR (mesma Wi-Fi, funciona ja)
+  Duplo clique: CELULAR-NA-REDE.bat
+  Copie o link http://192.168....:8790/ que aparecer na tela preta
+  Cole no Chrome do celular
+
+NO CELULAR (internet, depois de 1 config no GitHub)
+  1. Abra no navegador do PC:
+     https://github.com/RivasCode-Ops/diario-financeiro/settings/pages
+  2. Source: Deploy from a branch
+  3. Branch: gh-pages   Pasta: / (root)   Salvar
+  4. No celular: https://rivascode-ops.github.io/diario-financeiro/
+
+MESMOS DADOS NO CELULAR E PC
+  App > Configuracoes > Configurar sync
+  Token GitHub (permissao gist) — pode deixar Gist vazio (cria sozinho)
+  Repita o mesmo token no outro aparelho
+
+PORTAS (nao misturar)
+  8765 = FREEDOM (outro app)
+  8790 = Diario Financeiro
+
+Problemas?
+  Ctrl+F5 no navegador ou feche e abra ABRIR-DIARIO.bat de novo.

@@ -568,7 +568,7 @@ const fmt = new Intl.NumberFormat('pt-BR', {
 
 async function hashPin(pin) {
   if (!crypto?.subtle?.digest) {
-    toast('PIN indisponível nesta conexão. Use https:// ou http://127.0.0.1:8786/');
+    toast('PIN indisponível nesta conexão. Use https:// ou http://127.0.0.1:8790/');
     throw new Error('crypto.subtle indisponível');
   }
   const dados = new TextEncoder().encode(String(pin));

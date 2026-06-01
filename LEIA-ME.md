@@ -8,11 +8,11 @@ GitHub: https://github.com/RivasCode-Ops/diario-financeiro
 | Forma | Ação |
 |-------|------|
 | **Recomendado** | `Iniciar-Diario-Financeiro.bat` ou `Abrir-Diario-Financeiro.bat` |
-| Navegador | http://127.0.0.1:8786/ (com o servidor ligado) |
+| Navegador | http://127.0.0.1:8790/ (com o servidor ligado) |
 
 **Não abra** `index.html` com duplo clique — o JavaScript não carrega em `file://` e nada funciona (data, descrição, salvar).
 
-A porta **8765** é do app **FREEDOM** — o Diário usa **8786**.
+A porta **8765** é do app **FREEDOM** — o Diário usa **8790**.
 
 ### Mesmos dados no celular e no notebook
 
@@ -25,7 +25,7 @@ A porta **8765** é do app **FREEDOM** — o Diário usa **8786**.
 
 ### Não conecta?
 
-1. Deve aparecer a janela **Diario Financeiro Servidor** com `Serving HTTP on 127.0.0.1 port 8786`.
+1. Deve aparecer a janela **Diario Financeiro Servidor** com `Serving HTTP on 127.0.0.1 port 8790`.
 2. Se não abrir, instale [Python](https://www.python.org/downloads/) ou execute `Parar-Diario-Financeiro.bat` e tente de novo.
 3. Celular na mesma Wi‑Fi: use `Iniciar-Diario-Financeiro-Rede.bat`.
 

@@ -4,7 +4,7 @@ chcp 65001 >nul
 title Diario Financeiro (rede Wi-Fi)
 cd /d "%~dp0"
 
-set "PORT=8786"
+set "PORT=8790"
 
 where python >nul 2>&1
 if errorlevel 1 (

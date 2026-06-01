@@ -1,16 +1,17 @@
 # Ativar GitHub Pages (celular sem 404)
 
-O app no celular usa: **https://rivascode-ops.github.io/diario-financeiro/**
+URL do app: **https://rivascode-ops.github.io/diario-financeiro/**
 
-Se aparecer **404**, o deploy ainda não está ativo. Faça uma vez:
+A branch **`gh-pages`** já foi publicada. Falta **uma configuração** no GitHub (30 segundos):
 
-1. Abra https://github.com/RivasCode-Ops/diario-financeiro/settings/pages
-2. Em **Build and deployment → Source**, escolha **GitHub Actions** (não “Deploy from branch”).
-3. Abra https://github.com/RivasCode-Ops/diario-financeiro/actions
-4. Rode o workflow **Deploy GitHub Pages** (ou aguarde o push em `main` ficar verde).
-5. Quando terminar, teste a URL no celular com aba anônima.
+1. Abra: https://github.com/RivasCode-Ops/diario-financeiro/settings/pages  
+2. Em **Build and deployment → Source**, escolha **Deploy from a branch**  
+3. Branch: **`gh-pages`** · Pasta: **`/ (root)`** · Salvar  
+4. Aguarde 1–2 minutos e abra a URL no celular (aba anônima).
 
-## Enquanto o Pages não estiver no ar
+Alternativa: **GitHub Actions** → Source = GitHub Actions (workflow já existe em `main`).
 
-No PC: `Iniciar-Diario-Financeiro-Rede.bat`  
-No celular (mesma Wi‑Fi): `http://SEU-IP-DO-PC:8786/` (o bat mostra o IP).
+## Celular agora (sem esperar Pages)
+
+No PC: dê duplo clique em **`CELULAR-NA-REDE.bat`**  
+No celular (mesma Wi‑Fi): use o link `http://192.168.x.x:8790/` que aparecer na janela preta.

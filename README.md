@@ -9,7 +9,7 @@ Repositório: [github.com/RivasCode-Ops/diario-financeiro](https://github.com/Ri
 | Forma | Ação |
 |-------|------|
 | **Recomendado** | `Iniciar-Diario-Financeiro.bat` ou `Abrir-Diario-Financeiro.bat` |
-| Navegador local | http://127.0.0.1:8786/ (com o servidor do `.bat` ligado) |
+| Navegador local | http://127.0.0.1:8790/ (com o servidor do `.bat` ligado) |
 | GitHub Pages | https://rivascode-ops.github.io/diario-financeiro/ (após Actions verde) |
 
 **Não abra** `index.html` com duplo clique (`file://`) — o JavaScript não carrega e nada funciona (data, descrição, salvar).

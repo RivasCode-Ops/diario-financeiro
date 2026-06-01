@@ -436,15 +436,7 @@ function fecharModalSync() {
 }
 
 function talvezMostrarSyncInicial() {
-  if (api()?.syncConfigurado?.()) return;
-  try {
-    if (localStorage.getItem(STORAGE_SYNC_PROMPT) === '1') return;
-    localStorage.setItem(STORAGE_SYNC_PROMPT, '1');
-  } catch { /* ignore */ }
-  setTimeout(() => {
-    toast('Configure o sync para igualar celular e notebook.');
-    abrirModalSync();
-  }, 900);
+  /* Sync manual em Configurações — evita modal na abertura. */
 }
 
 function bindNav() {
@@ -592,6 +584,22 @@ function bindNav() {
   });
 }
 
+async function limparCacheAntigo() {
+  const V = 'diario-reset-v6';
+  try {
+    if (localStorage.getItem('diario-cache-reset') === V) return;
+    localStorage.setItem('diario-cache-reset', V);
+  } catch { /* ignore */ }
+  if ('serviceWorker' in navigator) {
+    const regs = await navigator.serviceWorker.getRegistrations();
+    await Promise.all(regs.map((r) => r.unregister()));
+  }
+  if (typeof caches !== 'undefined') {
+    const keys = await caches.keys();
+    await Promise.all(keys.map((k) => caches.delete(k)));
+  }
+}
+
 function initPwa() {
   if (!('serviceWorker' in navigator)) return;
   window.addEventListener('beforeinstallprompt', (e) => {
@@ -641,6 +649,7 @@ function aguardarDiario(maxTentativas = 80) {
 
 async function iniciarApp() {
   if (location.protocol === 'file:') return;
+  await limparCacheAntigo();
   try {
     await aguardarDiario();
   } catch {
@@ -650,7 +659,7 @@ async function iniciarApp() {
     mostrarErroBoot(
       testeJs === 200
         ? 'diario.js não iniciou. Pressione Ctrl+F5 ou limpe o cache do site.'
-        : `diario.js não encontrado (HTTP ${testeJs || '—'}). Use Iniciar-Diario-Financeiro.bat → http://127.0.0.1:8786/`
+        : `diario.js não encontrado (HTTP ${testeJs || '—'}). Use Iniciar-Diario-Financeiro.bat → http://127.0.0.1:8790/`
     );
     return;
   }

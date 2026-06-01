@@ -4,7 +4,7 @@ chcp 65001 >nul
 title Diario Financeiro
 cd /d "%~dp0"
 
-set "PORT=8786"
+set "PORT=8790"
 set "URL=http://127.0.0.1:%PORT%/"
 
 echo.
@@ -14,7 +14,7 @@ echo  (porta 8765 = FREEDOM - nao usar)
 echo.
 
 for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":%PORT%" ^| findstr "LISTENING"') do (
-  taskkill /F /PID %%a >nul 2>&1
+  if not "%%a"=="4" taskkill /F /PID %%a >nul 2>&1
 )
 
 where python >nul 2>&1
