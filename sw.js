@@ -1,16 +1,11 @@
-const CACHE = 'diario-financeiro-v1';
-const ASSETS = [
-  './',
-  './index.html',
-  './diario.css',
-  './diario.js',
-  './manifest.webmanifest',
-  './icons/icon.svg'
-];
+const CACHE = 'diario-financeiro-v2';
+const PRECACHE = ['./', './index.html', './diario.css', './diario.js', './manifest.webmanifest', './icons/icon.svg'];
+
+const NETWORK_FIRST = /\.(html?|js|css|mjs)$/i;
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(ASSETS)).then(() => self.skipWaiting())
+    caches.open(CACHE).then((cache) => cache.addAll(PRECACHE)).then(() => self.skipWaiting())
   );
 });
 
@@ -27,16 +22,28 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
 
+  const networkFirst = NETWORK_FIRST.test(url.pathname);
+
   event.respondWith(
-    caches.match(event.request).then(
-      (cached) =>
-        cached ||
-        fetch(event.request).then((res) => {
-          if (!res || res.status !== 200 || res.type !== 'basic') return res;
-          const copy = res.clone();
-          caches.open(CACHE).then((c) => c.put(event.request, copy));
-          return res;
-        })
-    )
+    (networkFirst
+      ? fetch(event.request)
+          .then((res) => {
+            if (res && res.status === 200 && res.type === 'basic') {
+              const copy = res.clone();
+              caches.open(CACHE).then((c) => c.put(event.request, copy));
+            }
+            return res;
+          })
+          .catch(() => caches.match(event.request))
+      : caches.match(event.request).then(
+          (cached) =>
+            cached ||
+            fetch(event.request).then((res) => {
+              if (!res || res.status !== 200 || res.type !== 'basic') return res;
+              const copy = res.clone();
+              caches.open(CACHE).then((c) => c.put(event.request, copy));
+              return res;
+            })
+        ))
   );
 });

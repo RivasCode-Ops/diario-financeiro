@@ -14,9 +14,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="diario.css" />
+  <link rel="stylesheet" href="./diario.css" />
 </head>
 <body>
+  <div id="bootErro" class="boot-erro" hidden role="alert"></div>
   <a class="skip-link" href="#mainContent">Pular para conteúdo</a>
   <div class="app">
     <header class="sheet-header">
@@ -291,6 +292,7 @@
       <input type="password" id="pinInput" inputmode="numeric" pattern="[0-9]*" maxlength="12" autocomplete="current-password" placeholder="PIN" />
       <button type="button" class="btn-icon" id="btnDesbloquearPin">Desbloquear</button>
       <p class="pin-erro" id="pinErro" hidden>PIN inválido.</p>
+      <button type="button" class="btn-icon btn-link-pin" id="btnEsqueciPin">Esqueci o PIN (remove proteção)</button>
     </div>
   </div>
 
@@ -331,6 +333,20 @@
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="diario.js" type="module"></script>
+  <script>
+    (function () {
+      if (location.protocol === 'file:') {
+        var el = document.getElementById('bootErro');
+        if (el) {
+          el.hidden = false;
+          el.innerHTML =
+            'O app não funciona aberto direto do disco (file://). ' +
+            'Use <strong>Iniciar-Diario-Financeiro.bat</strong> ou abra ' +
+            '<a href="http://127.0.0.1:8765/">http://127.0.0.1:8765/</a>.';
+        }
+      }
+    })();
+  </script>
+  <script src="./diario.js" defer></script>
 </body>
 </html>

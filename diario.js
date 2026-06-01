@@ -435,9 +435,20 @@ const fmt = new Intl.NumberFormat('pt-BR', {
 });
 
 async function hashPin(pin) {
+  if (!crypto?.subtle?.digest) {
+    toast('PIN indisponível nesta conexão. Use https:// ou http://127.0.0.1:8765/');
+    throw new Error('crypto.subtle indisponível');
+  }
   const dados = new TextEncoder().encode(String(pin));
   const digest = await crypto.subtle.digest('SHA-256', dados);
   return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+function removerPinEmergencia() {
+  if (!confirm('Remover o PIN? Qualquer pessoa com acesso ao navegador poderá ver seus dados.')) return;
+  localStorage.removeItem(STORAGE_PIN_HASH);
+  setBloqueioAtivo(false);
+  toast('Proteção por PIN removida.');
 }
 
 function temPinConfigurado() {
@@ -791,34 +802,34 @@ function salvarPerfilAtualFromLegacy() {
   p.global = mesclarGlobal(index.global);
 }
 
+function aplicarCamposLegacyDoPerfil(idx) {
+  const p = idx.profiles?.[idx.activeProfileId] || Object.values(idx.profiles || {})[0];
+  if (!p) {
+    const hoje = chaveMes();
+    idx.mesAtivo = idx.mesAtivo || hoje;
+    idx.meses = idx.meses || [hoje];
+    idx.global = idx.global || globalPadrao();
+    return idx;
+  }
+  idx.mesAtivo = p.mesAtivo || chaveMes();
+  idx.meses = Array.isArray(p.meses) && p.meses.length ? p.meses : [idx.mesAtivo];
+  idx.global = p.global || globalPadrao();
+  return idx;
+}
+
 function carregarIndex() {
   const migrado = migrarV1();
   if (migrado) {
-    const idx = normalizarPerfis(migrado);
-    const p = idx.profiles[idx.activeProfileId];
-    idx.mesAtivo = p.mesAtivo;
-    idx.meses = p.meses;
-    idx.global = p.global;
-    return idx;
+    return aplicarCamposLegacyDoPerfil(normalizarPerfis(migrado));
   }
   try {
     const raw = localStorage.getItem(STORAGE_IDX) || localStorage.getItem(STORAGE_IDX_V2);
     if (!raw) {
-      return normalizarPerfis({});
+      return aplicarCamposLegacyDoPerfil(normalizarPerfis({}));
     }
-    const idx = normalizarPerfis(JSON.parse(raw));
-    const p = idx.profiles[idx.activeProfileId];
-    idx.mesAtivo = p.mesAtivo;
-    idx.meses = p.meses;
-    idx.global = p.global;
-    return idx;
+    return aplicarCamposLegacyDoPerfil(normalizarPerfis(JSON.parse(raw)));
   } catch {
-    const idx = normalizarPerfis({});
-    const p = idx.profiles[idx.activeProfileId];
-    idx.mesAtivo = p.mesAtivo;
-    idx.meses = p.meses;
-    idx.global = p.global;
-    return idx;
+    return aplicarCamposLegacyDoPerfil(normalizarPerfis({}));
   }
 }
 
@@ -957,24 +968,32 @@ function removerPerfilFluxo() {
 }
 
 function persistir() {
-  const {
-    meta, objetivo, anotacoes, sonhos, citacao,
-    dataRef, receitas, gastos, semana, lancamentos, metasCategorias
-  } = estado;
-  index.global = mesclarGlobal({ meta, objetivo, anotacoes, sonhos, citacao });
-  salvarPerfilAtualFromLegacy();
-  const chave = index.mesAtivo;
-  localStorage.setItem(
-    STORAGE_MES(chave, index.activeProfileId),
-    JSON.stringify(
-      mesclarMes({ dataRef, receitas, gastos, semana, lancamentos, metasCategorias })
-    )
-  );
-  if (!index.meses.includes(chave)) {
-    index.meses.push(chave);
-    index.meses.sort();
+  try {
+    const {
+      meta, objetivo, anotacoes, sonhos, citacao,
+      dataRef, receitas, gastos, semana, lancamentos, metasCategorias
+    } = estado;
+    index.global = mesclarGlobal({ meta, objetivo, anotacoes, sonhos, citacao });
+    salvarPerfilAtualFromLegacy();
+    const chave = index.mesAtivo || chaveMes();
+    index.mesAtivo = chave;
+    localStorage.setItem(
+      STORAGE_MES(chave, index.activeProfileId),
+      JSON.stringify(
+        mesclarMes({ dataRef, receitas, gastos, semana, lancamentos, metasCategorias })
+      )
+    );
+    if (!index.meses.includes(chave)) {
+      index.meses.push(chave);
+      index.meses.sort();
+    }
+    localStorage.setItem(STORAGE_IDX, JSON.stringify(index));
+    return true;
+  } catch (err) {
+    console.error('persistir', err);
+    toast('Não foi possível salvar. Libere espaço ou use outro navegador.');
+    return false;
   }
-  localStorage.setItem(STORAGE_IDX, JSON.stringify(index));
 }
 
 function agendarSalvar() {
@@ -1486,10 +1505,24 @@ function gerarRelatorioMensalPdf(modo = 'completo') {
 
 function toast(msg) {
   const el = document.getElementById('toast');
+  if (!el) {
+    console.warn(msg);
+    return;
+  }
   el.textContent = msg;
   el.classList.add('show');
   clearTimeout(el._t);
   el._t = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+function mostrarErroBoot(msg) {
+  const el = $('bootErro');
+  if (el) {
+    el.hidden = false;
+    el.textContent = msg;
+  } else {
+    console.error(msg);
+  }
 }
 
 const $ = (id) => document.getElementById(id);
@@ -1508,6 +1541,7 @@ function trocarMes(chave) {
 
 function renderSelMes() {
   const sel = $('selMes');
+  if (!sel) return;
   index.meses.sort();
   sel.replaceChildren(
     ...index.meses.map((ch) => {
@@ -1564,10 +1598,13 @@ function criarLinhaFinanceira(item, tipo) {
 }
 
 function renderLinhasFinanceiras() {
-  $('listaReceitas').replaceChildren(
+  const listaR = $('listaReceitas');
+  const listaG = $('listaGastos');
+  if (!listaR || !listaG) return;
+  listaR.replaceChildren(
     ...estado.receitas.map((i) => criarLinhaFinanceira(i, 'receitas'))
   );
-  $('listaGastos').replaceChildren(
+  listaG.replaceChildren(
     ...estado.gastos.map((i) => criarLinhaFinanceira(i, 'gastos'))
   );
 }
@@ -2081,6 +2118,7 @@ function atualizarResumoGeral() {
 
 function renderSemana() {
   const tbody = $('corpoSemana');
+  if (!tbody) return;
   tbody.replaceChildren();
 
   for (const dia of DIAS_SEMANA) {
@@ -2164,6 +2202,7 @@ function renderGrafico() {
   const gastos = estado.gastos.filter((g) => (Number(g.valor) || 0) > 0);
   const wrap = $('graficoBarras');
   const vazio = $('graficoVazio');
+  if (!wrap || !vazio) return;
 
   if (!totalR || !gastos.length) {
     wrap.replaceChildren();
@@ -2371,10 +2410,15 @@ function renderPainelAnual() {
     })
   );
 
-  $('anualRec').textContent = fmt.format(totalRec);
-  $('anualGasto').textContent = fmt.format(totalGasto);
-  $('anualSaldo').textContent = fmt.format(totalSaldo);
-  $('anualSaldo').style.color = totalSaldo < 0 ? 'var(--alerta)' : 'var(--destaque)';
+  const anualRecEl = $('anualRec');
+  const anualGastoEl = $('anualGasto');
+  const anualSaldoEl = $('anualSaldo');
+  if (anualRecEl) anualRecEl.textContent = fmt.format(totalRec);
+  if (anualGastoEl) anualGastoEl.textContent = fmt.format(totalGasto);
+  if (anualSaldoEl) {
+    anualSaldoEl.textContent = fmt.format(totalSaldo);
+    anualSaldoEl.style.color = totalSaldo < 0 ? 'var(--alerta)' : 'var(--destaque)';
+  }
 
   const prevAno = String(Number(painelAnoAtivo) - 1);
   let prevRec = 0;
@@ -2400,12 +2444,21 @@ function renderPainelAnual() {
   const compRec = deltaPct(totalRec, prevRec);
   const compGasto = deltaPct(totalGasto, prevGasto);
   const compSaldo = deltaPct(totalSaldo, prevSaldo);
-  $('anualCompRec').textContent = fmtDelta(compRec);
-  $('anualCompGasto').textContent = fmtDelta(compGasto);
-  $('anualCompSaldo').textContent = fmtDelta(compSaldo);
-  $('anualCompRec').style.color = compRec == null ? 'var(--tinta-suave)' : (compRec >= 0 ? 'var(--destaque)' : 'var(--alerta)');
-  $('anualCompGasto').style.color = compGasto == null ? 'var(--tinta-suave)' : (compGasto <= 0 ? 'var(--destaque)' : 'var(--alerta)');
-  $('anualCompSaldo').style.color = compSaldo == null ? 'var(--tinta-suave)' : (compSaldo >= 0 ? 'var(--destaque)' : 'var(--alerta)');
+  const compRecEl = $('anualCompRec');
+  const compGastoEl = $('anualCompGasto');
+  const compSaldoEl = $('anualCompSaldo');
+  if (compRecEl) {
+    compRecEl.textContent = fmtDelta(compRec);
+    compRecEl.style.color = compRec == null ? 'var(--tinta-suave)' : (compRec >= 0 ? 'var(--destaque)' : 'var(--alerta)');
+  }
+  if (compGastoEl) {
+    compGastoEl.textContent = fmtDelta(compGasto);
+    compGastoEl.style.color = compGasto == null ? 'var(--tinta-suave)' : (compGasto <= 0 ? 'var(--destaque)' : 'var(--alerta)');
+  }
+  if (compSaldoEl) {
+    compSaldoEl.textContent = fmtDelta(compSaldo);
+    compSaldoEl.style.color = compSaldo == null ? 'var(--tinta-suave)' : (compSaldo >= 0 ? 'var(--destaque)' : 'var(--alerta)');
+  }
 
   vazio.hidden = temDados;
 }
@@ -2566,10 +2619,14 @@ function atualizarTotais() {
 }
 
 function renderCamposFixos() {
-  $('dataRef').value = estado.dataRef || hojeISO();
-  $('meta').value = estado.meta || '';
-  $('objetivo').value = estado.objetivo || '';
-  $('citacaoTexto').value = estado.citacao || '';
+  const dataRef = $('dataRef');
+  const meta = $('meta');
+  const objetivo = $('objetivo');
+  const citacao = $('citacaoTexto');
+  if (dataRef) dataRef.value = estado.dataRef || hojeISO();
+  if (meta) meta.value = estado.meta || '';
+  if (objetivo) objetivo.value = estado.objetivo || '';
+  if (citacao) citacao.value = estado.citacao || '';
 }
 
 function render() {
@@ -2959,6 +3016,7 @@ function bindEventos() {
   $('btnDesbloquearPin')?.addEventListener('click', async () => {
     await desbloquearComPin();
   });
+  $('btnEsqueciPin')?.addEventListener('click', () => removerPinEmergencia());
   $('pinInput')?.addEventListener('keydown', async (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -3055,19 +3113,34 @@ function initPwa() {
   navigator.serviceWorker.register('./sw.js').catch(() => {});
 }
 
-bindEventos();
-initPwa();
-evolucaoModo = carregarModoEvolucao();
-temaAtual = carregarTema();
-popularSelectCategorias();
-instalarMonitorInatividade();
-if (!localStorage.getItem(STORAGE_MES(index.mesAtivo, index.activeProfileId))) {
-  persistir();
+function iniciarApp() {
+  if (location.protocol === 'file:') return;
+
+  try {
+    bindEventos();
+    initPwa();
+    evolucaoModo = carregarModoEvolucao();
+    temaAtual = carregarTema();
+    popularSelectCategorias();
+    instalarMonitorInatividade();
+    if (!localStorage.getItem(STORAGE_MES(index.mesAtivo, index.activeProfileId))) {
+      persistir();
+    }
+    render();
+    if (temPinConfigurado()) {
+      setBloqueioAtivo(true);
+    } else {
+      resetAutoBloqueio();
+      tentarBackupAutomaticoDiario();
+    }
+  } catch (err) {
+    console.error('iniciarApp', err);
+    mostrarErroBoot(`Erro ao iniciar o app: ${err.message || err}. Tente Ctrl+F5 ou limpe o cache.`);
+  }
 }
-render();
-if (temPinConfigurado()) {
-  setBloqueioAtivo(true);
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', iniciarApp);
 } else {
-  resetAutoBloqueio();
-  tentarBackupAutomaticoDiario();
+  iniciarApp();
 }

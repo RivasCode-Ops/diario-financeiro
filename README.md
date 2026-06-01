@@ -8,11 +8,13 @@ Repositório: [github.com/RivasCode-Ops/diario-financeiro](https://github.com/Ri
 
 | Forma | Ação |
 |-------|------|
-| Atalho Windows | Duplo clique em `Abrir-Diario-Financeiro.bat` |
-| Navegador | Abra `index.html` (funciona offline) |
-| GitHub Pages | Após publicar, use a URL do Pages (Settings → Pages → branch `main`) |
+| **Recomendado** | `Iniciar-Diario-Financeiro.bat` ou `Abrir-Diario-Financeiro.bat` |
+| Navegador local | http://127.0.0.1:8765/ (com o servidor do `.bat` ligado) |
+| GitHub Pages | https://rivascode-ops.github.io/diario-financeiro/ (após Actions verde) |
 
-Não precisa de Node, banco nem servidor. Os dados ficam no `localStorage` do navegador.
+**Não abra** `index.html` com duplo clique (`file://`) — o JavaScript não carrega e nada funciona (data, descrição, salvar).
+
+Não precisa de Node nem banco. Os dados ficam no `localStorage` do navegador.
 
 ## Funcionalidades
 
@@ -31,6 +33,8 @@ diario-financeiro/
 ├── diario.css
 ├── diario.js
 ├── Abrir-Diario-Financeiro.bat
+├── Iniciar-Diario-Financeiro.bat
+├── Servidor-local.ps1
 └── LEIA-ME.md
 ```
 

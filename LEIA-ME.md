@@ -7,8 +7,10 @@ GitHub: https://github.com/RivasCode-Ops/diario-financeiro
 
 | Forma | Ação |
 |-------|------|
-| Atalho | `Abrir-Diario-Financeiro.bat` nesta pasta |
-| Navegador | Abra `index.html` |
+| **Recomendado** | `Iniciar-Diario-Financeiro.bat` ou `Abrir-Diario-Financeiro.bat` |
+| Navegador | http://127.0.0.1:8765/ (com o servidor ligado) |
+
+**Não abra** `index.html` com duplo clique — o JavaScript não carrega em `file://` e nada funciona (data, descrição, salvar).
 
 ## Funcionalidades
 
