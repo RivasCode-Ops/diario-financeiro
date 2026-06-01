@@ -1,0 +1,96 @@
+/**
+ * Design system — Diário Financeiro (fintech premium)
+ * Neutros claros + teal como destaque. Modo claro/escuro.
+ */
+:root {
+  color-scheme: light;
+
+  /* Tipografia */
+  --font-sans: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "DM Sans", var(--font-sans);
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.9375rem;
+  --text-lg: 1.0625rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 2rem;
+  --leading-tight: 1.2;
+  --leading-normal: 1.5;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* Cores — neutros + teal */
+  --bg: #f4f6f9;
+  --bg-subtle: #eef1f5;
+  --surface: #ffffff;
+  --surface-hover: #f8fafc;
+  --border: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --text: #0f172a;
+  --text-secondary: #64748b;
+  --text-tertiary: #94a3b8;
+  --accent: #0d6e6e;
+  --accent-hover: #0a5c5c;
+  --accent-muted: #e6f4f4;
+  --accent-text: #ffffff;
+  --positive: #059669;
+  --positive-muted: #ecfdf5;
+  --negative: #dc2626;
+  --negative-muted: #fef2f2;
+  --warning: #d97706;
+  --warning-muted: #fffbeb;
+
+  /* Espaçamento & forma */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-full: 999px;
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.1);
+
+  /* Layout */
+  --sidebar-w: 252px;
+  --header-h: 64px;
+  --bottom-nav-h: 68px;
+  --content-max: 1200px;
+  --transition: 0.18s ease;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0b1120;
+  --bg-subtle: #111827;
+  --surface: #151d2e;
+  --surface-hover: #1a2438;
+  --border: #243044;
+  --border-strong: #334155;
+  --text: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-tertiary: #64748b;
+  --accent: #2dd4bf;
+  --accent-hover: #5eead4;
+  --accent-muted: #134e4a;
+  --accent-text: #042f2e;
+  --positive: #34d399;
+  --positive-muted: #064e3b;
+  --negative: #f87171;
+  --negative-muted: #450a0a;
+  --warning: #fbbf24;
+  --warning-muted: #422006;
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.45);
+}

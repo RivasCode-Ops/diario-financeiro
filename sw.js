@@ -1,5 +1,16 @@
-const CACHE = 'diario-financeiro-v2';
-const PRECACHE = ['./', './index.html', './diario.css', './diario.js', './manifest.webmanifest', './icons/icon.svg'];
+const CACHE = 'diario-financeiro-v3';
+const PRECACHE = [
+  './',
+  './index.html',
+  './index-legado.html',
+  './css/tokens.css',
+  './css/app.css',
+  './app-shell.js',
+  './diario.css',
+  './diario.js',
+  './manifest.webmanifest',
+  './icons/icon.svg'
+];
 
 const NETWORK_FIRST = /\.(html?|js|css|mjs)$/i;
 

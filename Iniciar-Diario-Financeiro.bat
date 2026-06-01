@@ -30,7 +30,7 @@ set /a _t=0
 :aguarda
 timeout /t 1 /nobreak >nul
 set /a _t+=1
-powershell -NoProfile -Command "try { $r = Invoke-WebRequest -UseBasicParsing -Uri '%URL%' -TimeoutSec 2; if ($r.Content -match 'Diario Financeiro') { exit 0 } else { exit 2 } } catch { exit 1 }" >nul 2>&1
+powershell -NoProfile -Command "try { $r = Invoke-WebRequest -UseBasicParsing -Uri '%URL%' -TimeoutSec 2; if ($r.Content -match 'Diário Financeiro|Diario Financeiro') { exit 0 } else { exit 2 } } catch { exit 1 }" >nul 2>&1
 if !errorlevel!==0 goto abrir
 if !_t! lss 15 goto aguarda
 

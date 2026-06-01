@@ -20,7 +20,13 @@ A porta **8765** é do app **FREEDOM** — o Diário usa **8786**.
 2. Se não abrir, instale [Python](https://www.python.org/downloads/) ou execute `Parar-Diario-Financeiro.bat` e tente de novo.
 3. Celular na mesma Wi‑Fi: use `Iniciar-Diario-Financeiro-Rede.bat`.
 
-## Funcionalidades
+## Interface
+
+- **Nova UI fintech** (`index.html`) — dashboard, transações, orçamentos, metas, etc.
+- **Versão caderno** (`index-legado.html`) — receitas fixas, semana, CSV, sync Gist
+- Design system: `docs/DESIGN-SYSTEM.md`, tokens em `css/tokens.css`
+
+## Funcionalidades (versão legado)
 
 - Receitas e gastos fixos editáveis com totais automáticos
 - Resumo (receita − gastos = saldo) com alertas
