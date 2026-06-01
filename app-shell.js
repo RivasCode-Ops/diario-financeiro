@@ -620,10 +620,38 @@ function initPwa() {
   });
 }
 
+function aguardarDiario(maxTentativas = 80) {
+  return new Promise((resolve, reject) => {
+    if (api()) {
+      resolve();
+      return;
+    }
+    let n = 0;
+    const id = setInterval(() => {
+      if (api()) {
+        clearInterval(id);
+        resolve();
+      } else if (++n >= maxTentativas) {
+        clearInterval(id);
+        reject(new Error('diario-timeout'));
+      }
+    }, 50);
+  });
+}
+
 async function iniciarApp() {
   if (location.protocol === 'file:') return;
-  if (!api()) {
-    mostrarErroBoot('Erro: diario.js não carregou. Use o servidor local (porta 8786).');
+  try {
+    await aguardarDiario();
+  } catch {
+    const testeJs = await fetch('./diario.js', { cache: 'no-store' })
+      .then((r) => r.status)
+      .catch(() => 0);
+    mostrarErroBoot(
+      testeJs === 200
+        ? 'diario.js não iniciou. Pressione Ctrl+F5 ou limpe o cache do site.'
+        : `diario.js não encontrado (HTTP ${testeJs || '—'}). Use Iniciar-Diario-Financeiro.bat → http://127.0.0.1:8786/`
+    );
     return;
   }
   api()._notifyChange = refreshUi;

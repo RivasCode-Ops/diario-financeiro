@@ -1,4 +1,4 @@
-const CACHE = 'diario-financeiro-v4';
+const CACHE = 'diario-financeiro-v5';
 const PRECACHE = [
   './',
   './index.html',
@@ -15,9 +15,8 @@ const PRECACHE = [
 const NETWORK_FIRST = /\.(html?|js|css|mjs)$/i;
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(PRECACHE)).then(() => self.skipWaiting())
-  );
+  self.skipWaiting();
+  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(PRECACHE)));
 });
 
 self.addEventListener('activate', (event) => {

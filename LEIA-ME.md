@@ -20,7 +20,8 @@ A porta **8765** é do app **FREEDOM** — o Diário usa **8786**.
 2. Use o **mesmo Gist e token** nos dois aparelhos.
 3. Deixe **Sync automático** ligado: ao abrir o app baixa da nuvem; ao salvar, envia (2–3 s depois).
 4. Instale como **app** (PWA): no celular “Adicionar à tela inicial”; no PC use o botão **Instalar** em Configurações.
-5. Online: [GitHub Pages](https://rivascode-ops.github.io/diario-financeiro/) — não precisa do `.bat` no celular.
+5. Online: [GitHub Pages](https://rivascode-ops.github.io/diario-financeiro/) — se der **404**, siga [docs/ATIVAR-GITHUB-PAGES.md](docs/ATIVAR-GITHUB-PAGES.md).
+6. **Wi‑Fi (sem Pages):** `Iniciar-Diario-Financeiro-Rede.bat` e abra no celular o IP que aparecer na janela.
 
 ### Não conecta?
 
