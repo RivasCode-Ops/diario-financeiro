@@ -2919,6 +2919,10 @@ function bindEventos() {
     csvImportPreview = null;
     fecharModalMapaCsv();
   });
+  $('btnCsvMapFechar')?.addEventListener('click', () => {
+    csvImportPreview = null;
+    fecharModalMapaCsv();
+  });
   $('btnCsvMapConfirmar')?.addEventListener('click', () => {
     if (!csvImportPreview) return;
     const mapa = lerMapaCsvUi();
@@ -2937,6 +2941,12 @@ function bindEventos() {
   });
   $('csvMapOverlay')?.addEventListener('click', (e) => {
     if (e.target?.id === 'csvMapOverlay') {
+      csvImportPreview = null;
+      fecharModalMapaCsv();
+    }
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !$('csvMapOverlay')?.hidden) {
       csvImportPreview = null;
       fecharModalMapaCsv();
     }

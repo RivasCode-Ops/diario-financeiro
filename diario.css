@@ -524,35 +524,119 @@ input:focus {
 
 .pin-card.csv-map-card {
   width: min(680px, 94vw);
+  max-height: min(88vh, 820px);
+  overflow: auto;
+  border-radius: 14px;
+  padding: 1.1rem 1.05rem 0.95rem;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(250, 248, 242, 0.92));
+  border: 1px solid #d8cdb5;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.24);
+}
+
+.btn-modal-close {
+  position: sticky;
+  top: 0;
+  float: right;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid #d6cbb3;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--tinta-suave);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.btn-modal-close:hover {
+  border-color: var(--destaque);
+  color: var(--destaque);
 }
 
 .csv-map-grid {
   display: grid;
-  gap: 0.5rem;
-  margin: 0.6rem 0 0.65rem;
+  gap: 0.6rem 0.7rem;
+  margin: 0.72rem 0 0.72rem;
+  grid-template-columns: 1fr;
 }
 
 .csv-map-grid label {
   display: grid;
-  gap: 0.2rem;
-  font-size: 0.86rem;
+  gap: 0.28rem;
+  font-size: 0.83rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
   color: var(--tinta-suave);
 }
 
 .csv-map-grid select {
   width: 100%;
   font: inherit;
-  padding: 0.4rem 0.5rem;
-  border: 1px solid var(--linha);
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.62);
+  padding: 0.46rem 0.55rem;
+  border: 1px solid #d6cbb3;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.85);
 }
 
 .pin-actions {
   display: flex;
   justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 0.45rem;
-  margin-top: 0.45rem;
+  margin-top: 0.55rem;
+}
+
+.csv-map-card .btn-icon {
+  width: auto;
+  min-width: 9rem;
+}
+
+#btnCsvMapConfirmar {
+  background: linear-gradient(180deg, var(--destaque), #184f3f);
+  border-color: #184f3f;
+  color: #fff;
+}
+
+#btnCsvMapConfirmar:hover {
+  color: #fff;
+  border-color: #133f32;
+  box-shadow: 0 6px 14px rgba(24, 79, 63, 0.28);
+}
+
+#csvMapResumo {
+  margin-top: 0.1rem;
+  padding: 0.48rem 0.56rem;
+  border: 1px dashed #d7ccb4;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+@media (min-width: 760px) {
+  .csv-map-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+:root[data-theme="dark"] .pin-card.csv-map-card {
+  background: linear-gradient(180deg, #2a3036, #23292f);
+  border-color: #46515d;
+}
+
+:root[data-theme="dark"] .btn-modal-close {
+  background: #1f252b;
+  border-color: #495564;
+  color: #c8d2dd;
+}
+
+:root[data-theme="dark"] .csv-map-grid select {
+  background: #1f252b;
+  border-color: #495564;
+  color: #edf2f7;
+}
+
+:root[data-theme="dark"] #csvMapResumo {
+  border-color: #4a5563;
+  background: rgba(31, 37, 43, 0.72);
 }
 
 .lanc-busca-wrap {
@@ -1069,7 +1153,8 @@ a:focus-visible {
 .pin-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(10, 12, 16, 0.65);
+  background: rgba(10, 12, 16, 0.7);
+  backdrop-filter: blur(2px);
   display: grid;
   place-items: center;
   z-index: 200;
