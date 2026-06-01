@@ -1,6 +1,7 @@
-# Servidor HTTP local — Diário Financeiro (127.0.0.1:8765)
+# Servidor HTTP local — Diário Financeiro (127.0.0.1:8786)
+# Não usar 8765 — reservada ao FREEDOM no ecossistema EcoMaestro.
 $Root = (Resolve-Path $PSScriptRoot).Path
-$Port = 8765
+$Port = 8786
 $Prefix = "http://127.0.0.1:$Port/"
 
 $listener = New-Object System.Net.HttpListener
