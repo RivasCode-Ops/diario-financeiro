@@ -4,6 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="Meu Diário Financeiro — controle de receitas, gastos fixos e semana" />
+  <meta name="theme-color" content="#1a5f4a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Diário Financeiro" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="icons/icon.svg" />
   <title>Meu Diário Financeiro</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -11,16 +17,39 @@
   <link rel="stylesheet" href="diario.css" />
 </head>
 <body>
+  <a class="skip-link" href="#mainContent">Pular para conteúdo</a>
   <div class="app">
     <header class="sheet-header">
       <h1>Meu Diário Financeiro</h1>
       <div class="header-meta">
         <label class="field-inline">
+          <span>Perfil</span>
+          <select id="selPerfil" aria-label="Selecionar perfil"></select>
+        </label>
+        <button type="button" class="btn-icon" id="btnNovoPerfil" title="Criar novo perfil">+ Perfil</button>
+        <button type="button" class="btn-icon" id="btnDuplicarPerfil" title="Duplicar perfil atual">Duplicar perfil</button>
+        <button type="button" class="btn-icon" id="btnRenomearPerfil" title="Renomear perfil atual">Renomear perfil</button>
+        <button type="button" class="btn-icon" id="btnRemoverPerfil" title="Remover perfil atual">Remover perfil</button>
+        <label class="field-inline">
+          <span>Mês</span>
+          <select id="selMes" aria-label="Selecionar mês"></select>
+        </label>
+        <label class="field-inline">
           <span>Data</span>
           <input type="date" id="dataRef" />
         </label>
-        <button type="button" class="btn-icon" id="btnNovoMes" title="Novo mês (mantém metas)">Novo mês</button>
+        <button type="button" class="btn-icon" id="btnNovoMes" title="Criar próximo mês">+ Mês</button>
+        <button type="button" class="btn-icon" id="btnDuplicarMes" title="Copiar gastos do mês anterior">Duplicar anterior</button>
+        <button type="button" class="btn-icon" id="btnInstalar" hidden title="Instalar no celular">Instalar app</button>
+        <button type="button" class="btn-icon" id="btnPin" title="Configurar bloqueio por PIN">PIN</button>
+        <button type="button" class="btn-icon" id="btnRelatorioPdf" title="Gerar relatório mensal em PDF">Relatório PDF</button>
+        <button type="button" class="btn-icon" id="btnRelatorioPdfLimpo" title="Gerar relatório compacto em PDF">PDF limpo</button>
+        <button type="button" class="btn-icon" id="btnImprimir" title="Imprimir ou salvar PDF">Imprimir</button>
         <button type="button" class="btn-icon" id="btnExportar" title="Exportar backup JSON">Exportar</button>
+        <button type="button" class="btn-icon" id="btnSyncConfig" title="Configurar sincronização GitHub Gist">Sync config</button>
+        <button type="button" class="btn-icon" id="btnSyncPush" title="Enviar backup para o Gist">Sync enviar</button>
+        <button type="button" class="btn-icon" id="btnSyncPull" title="Baixar backup do Gist">Sync baixar</button>
+        <span class="sync-status" id="syncStatus">Sync: não configurado</span>
         <label class="btn-icon btn-import">
           Importar
           <input type="file" id="inputImportar" accept="application/json" hidden />
@@ -36,7 +65,7 @@
       </div>
     </header>
 
-    <main class="grid-main">
+    <main class="grid-main" id="mainContent">
       <section class="panel" aria-labelledby="titReceita">
         <h2 id="titReceita"><span class="num">1.</span> Receita</h2>
         <ul class="linhas" id="listaReceitas"></ul>
@@ -74,7 +103,42 @@
           <output id="resumoSaldo">R$ 0,00</output>
         </div>
       </div>
+      <div class="resumo-extras" id="wrapResumoExtras" hidden>
+        <div class="resumo-item mini">
+          <span>Extras (receitas)</span>
+          <output id="extraReceitas">R$ 0,00</output>
+        </div>
+        <div class="resumo-item mini">
+          <span>Extras (gastos)</span>
+          <output id="extraGastos">R$ 0,00</output>
+        </div>
+        <div class="resumo-item mini saldo" id="wrapSaldoGeral">
+          <span>Saldo geral do mês</span>
+          <output id="saldoGeral">R$ 0,00</output>
+        </div>
+      </div>
       <p class="alerta-saldo" id="alertaSaldo" hidden></p>
+    </section>
+
+    <section class="panel grafico-panel" aria-labelledby="titGrafico">
+      <h2 id="titGrafico"><span class="num">§</span> Onde vai o dinheiro</h2>
+      <p class="panel-hint">Percentual de cada gasto fixo sobre a receita do mês.</p>
+      <div class="grafico-barras" id="graficoBarras"></div>
+      <p class="grafico-vazio" id="graficoVazio" hidden>Adicione receitas e gastos para ver o gráfico.</p>
+    </section>
+
+    <section class="panel evolucao-panel" aria-labelledby="titEvolucao">
+      <h2 id="titEvolucao"><span class="num">↗</span> Evolução mensal</h2>
+      <div class="evolucao-topo">
+        <p class="panel-hint" id="evolucaoHint">Saldo geral (fixos + lançamentos avulsos) dos últimos meses.</p>
+        <div class="evolucao-modos" id="evolucaoModos" role="tablist" aria-label="Tipo da evolução mensal">
+          <button type="button" class="chip-filtro ativo" data-modo-evolucao="saldo">Saldo geral</button>
+          <button type="button" class="chip-filtro" data-modo-evolucao="receita">Receitas</button>
+          <button type="button" class="chip-filtro" data-modo-evolucao="gasto">Gastos</button>
+        </div>
+      </div>
+      <div class="evolucao-barras" id="evolucaoBarras"></div>
+      <p class="grafico-vazio" id="evolucaoVazio" hidden>Crie mais meses para acompanhar a evolução.</p>
     </section>
 
     <section class="panel" aria-labelledby="titControle">
@@ -103,16 +167,63 @@
       </div>
     </section>
 
+    <section class="panel" aria-labelledby="titLancamentos">
+      <h2 id="titLancamentos"><span class="num">5.</span> Lançamentos avulsos</h2>
+      <p class="panel-hint">Compras, bicos e gastos do dia — somam ao saldo geral do mês (fora da tabela da semana).</p>
+      <form class="form-lancamento" id="formLancamento">
+        <input type="date" id="lancData" required />
+        <select id="lancTipo" aria-label="Tipo">
+          <option value="gasto">Gasto</option>
+          <option value="receita">Receita</option>
+        </select>
+        <select id="lancCategoria" aria-label="Categoria"></select>
+        <input type="text" id="lancDesc" placeholder="Descrição" required />
+        <input type="number" id="lancValor" min="0.01" step="0.01" placeholder="Valor" required />
+        <button type="submit" class="btn-add">Registrar</button>
+      </form>
+      <div class="lanc-acoes">
+        <button type="button" class="btn-icon" id="btnImportarCsv">Importar CSV</button>
+        <button type="button" class="btn-icon" id="btnLimparMapasCsv">Limpar mapas CSV</button>
+        <button type="button" class="btn-icon" id="btnToggleNotifMeta">Notificação meta: off</button>
+        <input type="file" id="inputImportarCsv" accept=".csv,text/csv" hidden />
+      </div>
+      <div class="lanc-busca-wrap">
+        <input type="search" id="lancBusca" placeholder="Buscar lançamentos (descrição, categoria ou data)" aria-label="Buscar lançamentos" />
+        <button type="button" class="btn-icon" id="btnLimparBusca" hidden>Limpar busca</button>
+      </div>
+      <div class="lanc-filtros" id="lancFiltros" hidden></div>
+      <div class="resumo-categorias" id="resumoCategorias" hidden></div>
+      <ul class="lista-lancamentos" id="listaLancamentos"></ul>
+      <p class="lanc-vazio" id="lancVazio">Nenhum lançamento neste mês.</p>
+      <div class="lanc-totais">
+        <span>Receitas extras: <strong id="lancTotRec">R$ 0,00</strong></span>
+        <span>Gastos extras: <strong id="lancTotGasto">R$ 0,00</strong></span>
+        <span>Saldo extras: <strong id="lancSaldoExtra">R$ 0,00</strong></span>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="titMetasCategorias">
+      <h2 id="titMetasCategorias"><span class="num">5.1</span> Metas por categoria</h2>
+      <p class="panel-hint">Defina limite mensal para gastos avulsos por categoria e acompanhe o progresso.</p>
+      <div class="meta-acoes">
+        <button type="button" class="btn-icon" id="btnSugerirMetas">Aplicar sugestão (média 3 meses)</button>
+      </div>
+      <ul class="metas-categorias" id="metasCategorias"></ul>
+      <p class="meta-alerta" id="metaAlerta" hidden></p>
+    </section>
+
     <div class="grid-bottom">
       <section class="panel" aria-labelledby="titAnotacoes">
-        <h2 id="titAnotacoes"><span class="num">5.</span> Anotações</h2>
+        <h2 id="titAnotacoes"><span class="num">6.</span> Anotações</h2>
         <ul class="lista-texto" id="listaAnotacoes"></ul>
         <button type="button" class="btn-add" id="btnAddAnotacao">+ Adicionar anotação</button>
       </section>
 
-      <section class="panel" aria-labelledby="titSonhos">
-        <h2 id="titSonhos"><span class="num">6.</span> Sonhos</h2>
-        <ul class="lista-texto" id="listaSonhos"></ul>
+      <section class="panel panel-sonhos" aria-labelledby="titSonhos">
+        <h2 id="titSonhos"><span class="num">7.</span> Sonhos</h2>
+        <p class="panel-hint">Meta em R$ e quanto já guardou. A sobra mensal dos gastos fixos pode ir para “guardado”.</p>
+        <p class="sonho-sugestao" id="sonhoSugestao" hidden></p>
+        <ul class="lista-sonhos" id="listaSonhos"></ul>
         <button type="button" class="btn-add" id="btnAddSonho">+ Adicionar sonho</button>
       </section>
     </div>
@@ -121,6 +232,51 @@
       <label for="citacaoTexto" class="sr-only">Citação motivacional</label>
       <textarea id="citacaoTexto" rows="2" placeholder="Sua frase de inspiração para o mês…"></textarea>
     </footer>
+  </div>
+
+  <div class="pin-overlay" id="pinOverlay" hidden role="dialog" aria-modal="true" aria-labelledby="pinTitle">
+    <div class="pin-card">
+      <h2 id="pinTitle">Diário protegido</h2>
+      <p>Digite seu PIN para continuar.</p>
+      <input type="password" id="pinInput" inputmode="numeric" pattern="[0-9]*" maxlength="12" autocomplete="current-password" placeholder="PIN" />
+      <button type="button" class="btn-icon" id="btnDesbloquearPin">Desbloquear</button>
+      <p class="pin-erro" id="pinErro" hidden>PIN inválido.</p>
+    </div>
+  </div>
+
+  <div class="pin-overlay" id="csvMapOverlay" hidden role="dialog" aria-modal="true" aria-labelledby="csvMapTitle">
+    <div class="pin-card csv-map-card">
+      <h2 id="csvMapTitle">Importar CSV: mapear colunas</h2>
+      <p class="panel-hint">Confirme como as colunas do arquivo devem virar lançamentos.</p>
+      <div class="csv-map-grid">
+        <label>Data
+          <select id="csvMapData"></select>
+        </label>
+        <label>Descrição
+          <select id="csvMapDesc"></select>
+        </label>
+        <label>Valor
+          <select id="csvMapValor"></select>
+        </label>
+        <label>Tipo
+          <select id="csvMapTipo"></select>
+        </label>
+        <label>Categoria
+          <select id="csvMapCategoria"></select>
+        </label>
+        <label>Entrada
+          <select id="csvMapEntrada"></select>
+        </label>
+        <label>Saída
+          <select id="csvMapSaida"></select>
+        </label>
+      </div>
+      <p class="panel-hint" id="csvMapResumo"></p>
+      <div class="pin-actions">
+        <button type="button" class="btn-icon" id="btnCsvMapCancelar">Cancelar</button>
+        <button type="button" class="btn-icon" id="btnCsvMapConfirmar">Importar</button>
+      </div>
+    </div>
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>

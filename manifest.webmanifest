@@ -1,0 +1,26 @@
+{
+  "name": "Meu Diário Financeiro",
+  "short_name": "Diário $",
+  "description": "Controle pessoal de receitas, gastos fixos e lançamentos do mês.",
+  "lang": "pt-BR",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f4eedc",
+  "theme_color": "#1a5f4a",
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
