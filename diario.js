@@ -15,6 +15,8 @@ const STORAGE_SYNC_GH_TOKEN = 'diario-financeiro-sync-gh-token-v1';
 const STORAGE_SYNC_LAST_PUSH_AT = 'diario-financeiro-sync-last-push-at-v1';
 const STORAGE_SYNC_LAST_PULL_AT = 'diario-financeiro-sync-last-pull-at-v1';
 const STORAGE_THEME = 'diario-financeiro-theme-v1';
+const STORAGE_LOCAL_UPDATED_AT = 'diario-financeiro-local-updated-at-v1';
+const STORAGE_AUTO_SYNC_ENABLED = 'diario-financeiro-auto-sync-v1';
 const SYNC_GIST_FILE = 'diario-financeiro-backup.json';
 
 const MESES_PT = [
@@ -193,6 +195,24 @@ function setAutoBackupHabilitado(flag) {
   localStorage.setItem(STORAGE_AUTO_BACKUP_ENABLED, flag ? '1' : '0');
 }
 
+function autoSyncHabilitado() {
+  const raw = localStorage.getItem(STORAGE_AUTO_SYNC_ENABLED);
+  if (raw == null) return true;
+  return raw === '1';
+}
+
+function setAutoSyncHabilitado(flag) {
+  localStorage.setItem(STORAGE_AUTO_SYNC_ENABLED, flag ? '1' : '0');
+}
+
+function registrarAtualizacaoLocal() {
+  localStorage.setItem(STORAGE_LOCAL_UPDATED_AT, new Date().toISOString());
+}
+
+function carregarAtualizacaoLocal() {
+  return localStorage.getItem(STORAGE_LOCAL_UPDATED_AT) || '';
+}
+
 function carregarSyncConfig() {
   return {
     gistId: localStorage.getItem(STORAGE_SYNC_GIST_ID) || '',
@@ -308,21 +328,90 @@ async function syncEnviarFluxo() {
   toast('Backup enviado para o Gist.');
 }
 
-async function syncBaixarFluxo() {
+async function syncBaixarFluxo({ silencioso = false } = {}) {
   const { gistId } = carregarSyncConfig();
   if (!gistId) {
-    toast('Configure o Sync primeiro.');
-    return;
+    if (!silencioso) toast('Configure o Sync primeiro.');
+    return false;
   }
   const gist = await gistRequest(`/gists/${gistId}`);
   const arquivo = gist?.files?.[SYNC_GIST_FILE] || Object.values(gist?.files || {})[0];
   if (!arquivo?.content) throw new Error('sem-arquivo');
   const data = JSON.parse(arquivo.content);
-  if (!importarBackup(data)) throw new Error('formato');
-  render();
+  if (!aplicarBackupRemoto(data)) throw new Error('formato');
+  if (typeof render === 'function') render();
   registrarSyncPull();
   atualizarStatusSync();
-  toast('Backup baixado e aplicado.');
+  if (!silencioso) toast('Backup baixado e aplicado.');
+  if (window.__DIARIO_UI_SHELL__ && window.DiarioFinanceiro) {
+    window.DiarioFinanceiro._notifyChange();
+  }
+  return true;
+}
+
+let _syncImportando = false;
+
+function aplicarBackupRemoto(data) {
+  const remoto = data?.updatedAt || '';
+  const local = carregarAtualizacaoLocal();
+  if (remoto && local && new Date(remoto) <= new Date(local)) {
+    return false;
+  }
+  _syncImportando = true;
+  try {
+    const ok = importarBackup(data);
+    if (ok && remoto) localStorage.setItem(STORAGE_LOCAL_UPDATED_AT, remoto);
+    return ok;
+  } finally {
+    _syncImportando = false;
+  }
+}
+
+async function syncEnviarSilencioso() {
+  if (_syncImportando) return false;
+  const { gistId, token } = carregarSyncConfig();
+  if (!gistId || !token || !autoSyncHabilitado()) return false;
+  persistir();
+  const backup = exportarBackup();
+  await gistRequest(`/gists/${gistId}`, {
+    method: 'PATCH',
+    body: {
+      files: {
+        [SYNC_GIST_FILE]: { content: JSON.stringify(backup, null, 2) }
+      }
+    }
+  });
+  registrarSyncPush();
+  atualizarStatusSync();
+  return true;
+}
+
+let syncPushTimer = null;
+function agendarSyncPush() {
+  if (_syncImportando) return;
+  clearTimeout(syncPushTimer);
+  syncPushTimer = setTimeout(() => {
+    syncEnviarSilencioso().catch((e) => {
+      console.warn('sync push', e);
+      if (window.DiarioFinanceiro?._syncStatus) {
+        window.DiarioFinanceiro._syncStatus('erro');
+      }
+    });
+  }, 2200);
+}
+
+async function syncAutoNaAbertura() {
+  const { gistId, token } = carregarSyncConfig();
+  if (!gistId || !token || !autoSyncHabilitado()) return;
+  try {
+    if (window.DiarioFinanceiro?._syncStatus) window.DiarioFinanceiro._syncStatus('sync');
+    await syncBaixarFluxo({ silencioso: true });
+    await syncEnviarSilencioso();
+    if (window.DiarioFinanceiro?._syncStatus) window.DiarioFinanceiro._syncStatus('ok');
+  } catch (e) {
+    console.warn('sync abertura', e);
+    if (window.DiarioFinanceiro?._syncStatus) window.DiarioFinanceiro._syncStatus('erro');
+  }
 }
 
 function tratarErroSync(e) {
@@ -988,6 +1077,11 @@ function persistir() {
       index.meses.sort();
     }
     localStorage.setItem(STORAGE_IDX, JSON.stringify(index));
+    if (!_syncImportando) registrarAtualizacaoLocal();
+    if (window.__DIARIO_UI_SHELL__ && window.DiarioFinanceiro && !_syncImportando) {
+      window.DiarioFinanceiro._notifyChange();
+      window.DiarioFinanceiro._scheduleSyncPush();
+    }
     return true;
   } catch (err) {
     console.error('persistir', err);
@@ -2660,7 +2754,12 @@ function exportarBackup() {
     });
     perfis[pid] = meses;
   });
-  return { versao: 3, index, perfis };
+  return {
+    versao: 3,
+    updatedAt: carregarAtualizacaoLocal() || new Date().toISOString(),
+    index,
+    perfis
+  };
 }
 
 function importarBackupV3(data) {
@@ -3139,8 +3238,191 @@ function iniciarApp() {
   }
 }
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', iniciarApp);
-} else {
-  iniciarApp();
+function formatarDataTx(iso) {
+  if (!iso) return '';
+  const hoje = hojeISO();
+  if (iso === hoje) return 'Hoje';
+  const ontem = new Date();
+  ontem.setDate(ontem.getDate() - 1);
+  const o = ontem.toISOString().slice(0, 10);
+  if (iso === o) return 'Ontem';
+  const [y, m, d] = iso.split('-');
+  return `${d}/${m}`;
+}
+
+function emojiCategoria(catId, tipo) {
+  const map = {
+    mercado: '🛒',
+    transporte: '🚗',
+    saude: '💊',
+    educacao: '📚',
+    lazer: '🎬',
+    casa: '🏠',
+    'salario-extra': '💼',
+    'outros-receita': '↗',
+    'outros-gasto': '💳'
+  };
+  return map[catId] || (tipo === 'receita' ? '↗' : '💳');
+}
+
+function getSnapshotUi() {
+  const chave = index.mesAtivo;
+  const resumo = resumoDoMes(chave);
+  const perfil = perfilAtual();
+  const mes = carregarMes(chave, index.activeProfileId);
+  const sonhos = mesclarGlobal(index.global).sonhos || [];
+  const guardadoSonhos = sonhos.reduce((a, s) => a + (Number(s.guardado) || 0), 0);
+
+  const month = {
+    income: resumo.totalR + resumo.extras.rec,
+    expense: resumo.totalG + resumo.extras.gasto,
+    savings: resumo.saldoGeral
+  };
+
+  const meses = [...(index.meses || [])].sort().slice(-6);
+  const saldos = meses.map((m) => Math.abs(resumoDoMes(m).saldoGeral));
+  const maxSaldo = Math.max(...saldos, 1);
+  const flow = meses.map((m) => {
+    const mm = Number(m.split('-')[1]);
+    return {
+      label: MESES_PT[mm - 1]?.slice(0, 3) || m,
+      pct: Math.round((Math.abs(resumoDoMes(m).saldoGeral) / maxSaldo) * 100)
+    };
+  });
+
+  const metas = mes.metasCategorias || metasCategoriasPadrao();
+  const lancs = (mes.lancamentos || []).map(normalizarLancamento);
+  const budgets = CATEGORIAS.filter((c) => c.tipos.includes('gasto'))
+    .map((cat) => {
+      const spent = lancs
+        .filter((l) => l.tipo === 'gasto' && l.categoria === cat.id)
+        .reduce((a, l) => a + (Number(l.valor) || 0), 0);
+      const limit = Math.max(0, Number(metas[cat.id]) || 0);
+      return { name: cat.label, spent, limit: limit || Math.max(spent, 1) };
+    })
+    .filter((b) => b.spent > 0 || b.limit > 0)
+    .sort((a, b) => b.spent - a.spent)
+    .slice(0, 6);
+
+  const transactions = lancamentosDoMesTodos()
+    .sort((a, b) => String(b.data).localeCompare(String(a.data)))
+    .slice(0, 8)
+    .map((l) => ({
+      id: l.id,
+      title: l.descricao,
+      cat: labelCategoria(l.categoria, l.tipo),
+      date: formatarDataTx(l.data),
+      amount: l.tipo === 'receita' ? Number(l.valor) : -Number(l.valor),
+      type: l.tipo === 'receita' ? 'in' : 'out',
+      emoji: emojiCategoria(l.categoria, l.tipo)
+    }));
+
+  const bills = (mes.gastos || [])
+    .filter((g) => (Number(g.valor) || 0) > 0)
+    .slice(0, 4)
+    .map((g) => ({
+      name: g.descricao || 'Conta',
+      due: rotuloMes(chave).split(' ')[0],
+      amount: Number(g.valor) || 0,
+      status: 'due'
+    }));
+
+  const goals = sonhos
+    .filter((s) => s.texto)
+    .map((s) => ({
+      title: s.texto,
+      current: Number(s.guardado) || 0,
+      target: Number(s.meta) || 0
+    }));
+
+  const todasTx = [];
+  (index.meses || []).forEach((m) => {
+    const mm = carregarMes(m, index.activeProfileId);
+    (mm.lancamentos || []).forEach((l) => {
+      const n = normalizarLancamento(l);
+      todasTx.push({ ...n, mes: m });
+    });
+  });
+
+  return {
+    userName: perfil?.nome || 'Você',
+    balance: resumo.saldoGeral + guardadoSonhos,
+    month,
+    flow,
+    budgets,
+    transactions,
+    bills,
+    goals,
+    mesAtivo: chave,
+    rotuloMes: rotuloMes(chave),
+    todasTransacoes: todasTx.sort((a, b) => String(b.data).localeCompare(String(a.data)))
+  };
+}
+
+function adicionarLancamentoRapido({ data, descricao, valor, tipo, categoria }) {
+  if (!data || !descricao || !valor || valor <= 0) return false;
+  if (chaveMes(data) !== index.mesAtivo) return false;
+  if (!Array.isArray(estado.lancamentos)) estado.lancamentos = [];
+  estado.lancamentos.push(
+    normalizarLancamento({
+      id: uid(),
+      data,
+      descricao: descricao.trim(),
+      tipo: tipo === 'receita' ? 'receita' : 'gasto',
+      categoria: categoria || categoriaPadrao(tipo),
+      valor: Number(valor)
+    })
+  );
+  agendarSalvar();
+  return true;
+}
+
+function exportarBackupArquivo() {
+  const nome = `diario-financeiro-${hojeISO()}.json`;
+  baixarBackupJson(nome, exportarBackup());
+}
+
+window.DiarioFinanceiro = {
+  init: async () => {
+    if (!localStorage.getItem(STORAGE_MES(index.mesAtivo, index.activeProfileId))) {
+      persistir();
+    }
+    await syncAutoNaAbertura();
+  },
+  getSnapshot: getSnapshotUi,
+  persistir,
+  agendarSalvar,
+  adicionarLancamento: adicionarLancamentoRapido,
+  exportarBackup: exportarBackupArquivo,
+  importarArquivo: async (file) => {
+    const data = JSON.parse(await file.text());
+    if (!importarBackup(data)) throw new Error('formato');
+    return true;
+  },
+  syncConfigurar: syncConfigurarFluxo,
+  syncEnviar: syncEnviarFluxo,
+  syncBaixar: (opts) => syncBaixarFluxo(opts || {}),
+  syncAutoHabilitado: autoSyncHabilitado,
+  setSyncAuto: setAutoSyncHabilitado,
+  syncConfigurado: () => {
+    const { gistId, token } = carregarSyncConfig();
+    return Boolean(gistId && token);
+  },
+  statusSync: () => {
+    const push = localStorage.getItem(STORAGE_SYNC_LAST_PUSH_AT);
+    const pull = localStorage.getItem(STORAGE_SYNC_LAST_PULL_AT);
+    return { push, pull, auto: autoSyncHabilitado() };
+  },
+  gerarPdf: () => gerarRelatorioMensalPdf('completo'),
+  _notifyChange: () => {},
+  _scheduleSyncPush: agendarSyncPush,
+  _syncStatus: () => {}
+};
+
+if (!window.__DIARIO_UI_SHELL__) {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', iniciarApp);
+  } else {
+    iniciarApp();
+  }
 }

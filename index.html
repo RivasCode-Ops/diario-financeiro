@@ -60,13 +60,14 @@
           <input type="search" id="globalSearch" placeholder="Buscar transações…" aria-label="Buscar" autocomplete="off" />
         </div>
         <div class="topbar__actions">
+          <span class="sync-chip sync-chip--off" id="syncChip" title="Sincronização nuvem">Sync</span>
           <button type="button" class="btn btn--icon" id="btnTheme" aria-label="Alternar tema escuro" aria-pressed="false">
             <svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z" fill="currentColor"/></svg>
           </button>
           <button type="button" class="btn btn--icon" aria-label="Notificações">
             <svg viewBox="0 0 24 24"><path d="M12 2a5 5 0 0 0-5 5v2.3l-1 2v1h12v-1l-1-2V7a5 5 0 0 0-5-5zm-2 16h4v2h-4v-2z" fill="currentColor"/></svg>
           </button>
-          <button type="button" class="btn btn--primary">
+          <button type="button" class="btn btn--primary" id="btnNovo">
             <svg viewBox="0 0 24 24" width="18" height="18"><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6V5z" fill="currentColor"/></svg>
             <span class="hide-mobile">Novo</span>
           </button>
@@ -240,10 +241,49 @@
               </div>
               <button type="button" class="toggle" id="toggleDark" aria-label="Ativar modo escuro"></button>
             </div>
-            <div class="settings-row card--clickable">
+            <div class="settings-row">
+              <div>
+                <strong style="font-size:var(--text-sm)">Sync celular + notebook</strong>
+                <p id="syncConfigText" style="margin:4px 0 0;font-size:var(--text-xs);color:var(--text-secondary)">Configure para os dados ficarem iguais em todos os aparelhos.</p>
+              </div>
+            </div>
+            <div class="settings-row" style="gap:var(--space-2);flex-wrap:wrap">
+              <button type="button" class="btn btn--ghost" id="btnSyncConfig">Configurar sync</button>
+              <button type="button" class="btn btn--primary" id="btnSyncManual">Sincronizar agora</button>
+            </div>
+            <div class="settings-row">
+              <div>
+                <strong style="font-size:var(--text-sm)">Sync automático</strong>
+                <p style="margin:4px 0 0;font-size:var(--text-xs);color:var(--text-secondary)">Baixa ao abrir e envia após cada alteração</p>
+              </div>
+              <button type="button" class="toggle is-on" id="toggleSyncAuto" aria-label="Sync automático"></button>
+            </div>
+            <div class="settings-row">
+              <div>
+                <strong style="font-size:var(--text-sm)">Instalar como app</strong>
+                <p style="margin:4px 0 0;font-size:var(--text-xs);color:var(--text-secondary)">Funciona sem outras ferramentas abertas</p>
+              </div>
+              <button type="button" class="btn btn--ghost" id="btnInstalar" hidden>Instalar</button>
+            </div>
+            <div class="settings-row card--clickable" id="btnExportar" role="button" tabindex="0">
               <div>
                 <strong style="font-size:var(--text-sm)">Exportar backup</strong>
                 <p style="margin:4px 0 0;font-size:var(--text-xs);color:var(--text-secondary)">JSON com todos os dados</p>
+              </div>
+              <span style="color:var(--accent)">→</span>
+            </div>
+            <div class="settings-row card--clickable" id="btnImportarRow" role="button" tabindex="0">
+              <div>
+                <strong style="font-size:var(--text-sm)">Importar backup</strong>
+                <p style="margin:4px 0 0;font-size:var(--text-xs);color:var(--text-secondary)">Restaurar de arquivo JSON</p>
+              </div>
+              <input type="file" id="inputImportar" accept="application/json" hidden />
+              <span style="color:var(--accent)">→</span>
+            </div>
+            <div class="settings-row card--clickable" id="btnRelatorio" role="button" tabindex="0">
+              <div>
+                <strong style="font-size:var(--text-sm)">Relatório PDF do mês</strong>
+                <p style="margin:4px 0 0;font-size:var(--text-xs);color:var(--text-secondary)">Imprimir ou salvar PDF</p>
               </div>
               <span style="color:var(--accent)">→</span>
             </div>
@@ -272,13 +312,51 @@
     </div>
   </div>
 
+  <div class="modal" id="modalNovo" role="dialog" aria-modal="true" aria-labelledby="modalNovoTitle">
+    <div class="modal__backdrop" id="modalNovoBackdrop"></div>
+    <div class="modal__panel card">
+      <div class="card__head">
+        <h3 id="modalNovoTitle">Novo lançamento</h3>
+        <button type="button" class="btn btn--ghost" id="btnModalFechar">Fechar</button>
+      </div>
+      <form id="formNovoLanc" class="form-stack">
+        <label>Data <input type="date" name="data" required /></label>
+        <label>Tipo
+          <select name="tipo" required>
+            <option value="gasto">Despesa</option>
+            <option value="receita">Receita</option>
+          </select>
+        </label>
+        <label>Categoria
+          <select name="categoria">
+            <option value="mercado">Mercado</option>
+            <option value="transporte">Transporte</option>
+            <option value="casa">Casa / contas</option>
+            <option value="lazer">Lazer</option>
+            <option value="salario-extra">Salário / extra</option>
+            <option value="outros-gasto">Outros gastos</option>
+            <option value="outros-receita">Outras receitas</option>
+          </select>
+        </label>
+        <label>Descrição <input type="text" name="descricao" required placeholder="Ex.: Supermercado" /></label>
+        <label>Valor (R$) <input type="number" name="valor" min="0.01" step="0.01" required /></label>
+        <button type="submit" class="btn btn--primary" style="width:100%">Salvar</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
   <style>
     @media (max-width: 480px) {
       .hide-mobile { display: none; }
       .topbar__greeting p { display: none; }
+      .sync-chip { display: none; }
     }
   </style>
 
+  <script>window.__DIARIO_UI_SHELL__ = true;</script>
+  <script src="./diario.js" defer></script>
   <script src="./app-shell.js" defer></script>
 </body>
 </html>

@@ -1,8 +1,9 @@
 /**
- * Shell de navegação — UI fintech (demo / layout)
- * Integração com diario.js (dados reais) em etapa seguinte.
+ * Shell fintech — dados reais (diario.js) + sync automático Gist.
  */
 const STORAGE_THEME = 'diario-financeiro-theme-v1';
+let promptInstalar = null;
+let snapshotCache = null;
 
 const VIEWS = [
   { id: 'dashboard', label: 'Dashboard', icon: 'grid' },
@@ -14,44 +15,61 @@ const VIEWS = [
   { id: 'configuracoes', label: 'Configurações', icon: 'settings' }
 ];
 
-const DEMO = {
-  userName: 'Maria',
-  balance: 12847.32,
-  month: { income: 5200, expense: 3842.18, savings: 1357.82 },
-  flow: [
-    { label: 'Jan', pct: 45 },
-    { label: 'Fev', pct: 62 },
-    { label: 'Mar', pct: 55 },
-    { label: 'Abr', pct: 78 },
-    { label: 'Mai', pct: 70 },
-    { label: 'Jun', pct: 85 }
-  ],
-  budgets: [
-    { name: 'Moradia', spent: 1200, limit: 1400 },
-    { name: 'Alimentação', spent: 890, limit: 800 },
-    { name: 'Transporte', spent: 320, limit: 450 },
-    { name: 'Lazer', spent: 180, limit: 300 }
-  ],
-  transactions: [
-    { id: 1, title: 'Supermercado Extra', cat: 'Alimentação', date: 'Hoje, 14:32', amount: -142.5, type: 'out', emoji: '🛒' },
-    { id: 2, title: 'Salário', cat: 'Receita', date: 'Ontem', amount: 5200, type: 'in', emoji: '💼' },
-    { id: 3, title: 'Netflix', cat: 'Assinaturas', date: '28 mai', amount: -55.9, type: 'out', emoji: '📺' },
-    { id: 4, title: 'Uber', cat: 'Transporte', date: '27 mai', amount: -24.8, type: 'out', emoji: '🚗' },
-    { id: 5, title: 'PIX recebido', cat: 'Transferência', date: '26 mai', amount: 350, type: 'in', emoji: '↗' }
-  ],
-  bills: [
-    { name: 'Cartão Nubank', due: '05 jun', amount: 1842.0, status: 'due' },
-    { name: 'Aluguel', due: '10 jun', amount: 1200, status: 'due' },
-    { name: 'Internet', due: '15 jun', amount: 99.9, status: 'ok' }
-  ],
-  goals: [
-    { title: 'Reserva de emergência', current: 8500, target: 15000 },
-    { title: 'Viagem', current: 2200, target: 8000 },
-    { title: 'Curso', current: 600, target: 2500 }
-  ]
-};
-
 const fmt = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+
+function api() {
+  return window.DiarioFinanceiro;
+}
+
+function getData() {
+  try {
+    snapshotCache = api()?.getSnapshot?.() || snapshotCache;
+  } catch (e) {
+    console.warn('getSnapshot', e);
+  }
+  return snapshotCache || {
+    userName: 'Você',
+    balance: 0,
+    month: { income: 0, expense: 0, savings: 0 },
+    flow: [],
+    budgets: [],
+    transactions: [],
+    bills: [],
+    goals: [],
+    rotuloMes: '',
+    todasTransacoes: []
+  };
+}
+
+function toast(msg) {
+  const el = $('#toast');
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), 2600);
+}
+
+function atualizarChipSync(estado) {
+  const chip = $('#syncChip');
+  if (!chip) return;
+  const cfg = api()?.syncConfigurado?.();
+  if (!cfg) {
+    chip.textContent = 'Sync off';
+    chip.className = 'sync-chip sync-chip--off';
+    return;
+  }
+  if (estado === 'sync') {
+    chip.textContent = 'Sincronizando…';
+    chip.className = 'sync-chip sync-chip--sync';
+  } else if (estado === 'erro') {
+    chip.textContent = 'Sync erro';
+    chip.className = 'sync-chip sync-chip--err';
+  } else {
+    chip.textContent = 'Sync ok';
+    chip.className = 'sync-chip sync-chip--ok';
+  }
+}
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -114,10 +132,19 @@ function goalPct(current, target) {
   return Math.min(100, Math.round((current / target) * 100));
 }
 
+function refreshUi() {
+  snapshotCache = null;
+  renderDashboard();
+  if (viewAtual === 'transacoes') renderTransacoesView(true);
+  renderConfigSync();
+}
+
 function renderDashboard() {
-  const d = DEMO;
+  const d = getData();
   const greet = $('#topbarGreeting');
   if (greet) greet.textContent = `${saudacao()}, ${d.userName}`;
+  const sub = $('#pageSubtitle');
+  if (sub) sub.textContent = d.rotuloMes ? `Resumo de ${d.rotuloMes}` : 'Resumo financeiro';
 
   const bal = $('#dashBalance');
   if (bal) bal.textContent = fmt.format(d.balance);
@@ -299,7 +326,8 @@ function setView(id) {
   const sub = $('#pageSubtitle');
   if (h) h.textContent = id === 'dashboard' ? '' : t;
   if (sub && id !== 'dashboard') sub.textContent = s;
-  if (id === 'transacoes') renderTransacoesView();
+  if (id === 'transacoes') renderTransacoesView(true);
+  if (id === 'configuracoes') renderConfigSync();
   if (id === 'orcamentos') {
     const el = $('#budgetListOrcamentos');
     const src = $('#budgetList');
@@ -312,22 +340,44 @@ function setView(id) {
   }
 }
 
-function renderTransacoesView() {
+function renderTransacoesView(force = false) {
   const tbody = $('#txTableBody');
-  if (!tbody || tbody.dataset.filled) return;
-  tbody.dataset.filled = '1';
-  tbody.innerHTML = DEMO.transactions
-    .concat(DEMO.transactions)
-    .map(
-      (t) => `
+  if (!tbody) return;
+  const d = getData();
+  const rows = (d.todasTransacoes || []).map((l) => ({
+    date: l.data,
+    title: l.descricao,
+    cat: l.categoria,
+    amount: l.tipo === 'receita' ? Number(l.valor) : -Number(l.valor),
+    type: l.tipo === 'receita' ? 'in' : 'out'
+  }));
+  tbody.innerHTML = rows.length
+    ? rows
+        .map(
+          (t) => `
     <tr>
       <td>${t.date}</td>
       <td>${t.title}</td>
       <td>${t.cat}</td>
       <td style="text-align:right;font-weight:600" class="${t.type === 'in' ? 'stat-card__value--positive' : ''}">${fmt.format(t.amount)}</td>
     </tr>`
-    )
-    .join('');
+        )
+        .join('')
+    : '<tr><td colspan="4" style="text-align:center;color:var(--text-secondary)">Nenhum lançamento ainda.</td></tr>';
+  if (force) tbody.dataset.filled = '1';
+}
+
+function renderConfigSync() {
+  const st = api()?.statusSync?.();
+  const el = $('#syncConfigText');
+  if (!el || !st) return;
+  const push = st.push ? new Date(st.push).toLocaleString('pt-BR') : '—';
+  const pull = st.pull ? new Date(st.pull).toLocaleString('pt-BR') : '—';
+  el.textContent = api()?.syncConfigurado?.()
+    ? `Último envio: ${push} · Última baixa: ${pull}`
+    : 'Configure Gist + token para celular e notebook iguais.';
+  const tgl = $('#toggleSyncAuto');
+  if (tgl) tgl.classList.toggle('is-on', st.auto !== false);
 }
 
 function abrirMenuSheet() {
@@ -340,14 +390,28 @@ function fecharMenuSheet() {
 
 function filtrarBusca(termo) {
   const q = termo.trim().toLowerCase();
+  const d = getData();
   if (!q) {
-    renderTxList(DEMO.transactions);
+    renderTxList(d.transactions);
     return;
   }
-  const filtrado = DEMO.transactions.filter(
+  const filtrado = (d.transactions || []).filter(
     (t) => t.title.toLowerCase().includes(q) || t.cat.toLowerCase().includes(q)
   );
   renderTxList(filtrado);
+}
+
+function abrirModalLancamento() {
+  const m = getData();
+  const form = $('#formNovoLanc');
+  if (!form) return;
+  const data = document.querySelector('#formNovoLanc [name="data"]');
+  if (data) data.value = new Date().toISOString().slice(0, 10);
+  $('#modalNovo')?.classList.add('is-open');
+}
+
+function fecharModalLancamento() {
+  $('#modalNovo')?.classList.remove('is-open');
 }
 
 function bindNav() {
@@ -378,19 +442,136 @@ function bindNav() {
   $$('[data-go]').forEach((el) => {
     el.addEventListener('click', () => setView(el.dataset.go));
   });
+
+  $('#btnNovo')?.addEventListener('click', abrirModalLancamento);
+  $('#btnModalFechar')?.addEventListener('click', fecharModalLancamento);
+  $('#modalNovoBackdrop')?.addEventListener('click', fecharModalLancamento);
+  $('#formNovoLanc')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const ok = api()?.adicionarLancamento?.({
+      data: fd.get('data'),
+      descricao: fd.get('descricao'),
+      valor: parseFloat(fd.get('valor')),
+      tipo: fd.get('tipo'),
+      categoria: fd.get('categoria')
+    });
+    if (!ok) {
+      toast('Preencha data (mês ativo), descrição e valor.');
+      return;
+    }
+    fecharModalLancamento();
+    e.target.reset();
+    refreshUi();
+    toast('Lançamento salvo.');
+  });
+
+  $('#btnSyncConfig')?.addEventListener('click', () => api()?.syncConfigurar?.());
+  $('#btnSyncManual')?.addEventListener('click', async () => {
+    try {
+      atualizarChipSync('sync');
+      await api()?.syncBaixar?.({ silencioso: false });
+      await api()?.syncEnviar?.();
+      refreshUi();
+      atualizarChipSync('ok');
+    } catch {
+      atualizarChipSync('erro');
+    }
+  });
+  $('#toggleSyncAuto')?.addEventListener('click', () => {
+    const on = !$('#toggleSyncAuto')?.classList.contains('is-on');
+    api()?.setSyncAuto?.(on);
+    $('#toggleSyncAuto')?.classList.toggle('is-on', on);
+    toast(on ? 'Sync automático ligado.' : 'Sync automático desligado.');
+  });
+  $('#btnExportar')?.addEventListener('click', () => api()?.exportarBackup?.());
+  $('#btnRelatorio')?.addEventListener('click', () => api()?.gerarPdf?.());
+  $('#btnImportarRow')?.addEventListener('click', () => $('#inputImportar')?.click());
+  $('#inputImportar')?.addEventListener('change', async (ev) => {
+    const file = ev.target.files?.[0];
+    if (!file) return;
+    try {
+      await api()?.importarArquivo?.(file);
+      refreshUi();
+      toast('Backup importado.');
+    } catch {
+      toast('Arquivo inválido.');
+    }
+    ev.target.value = '';
+  });
+  $('#btnInstalar')?.addEventListener('click', async () => {
+    if (!promptInstalar) {
+      toast('Menu do navegador → Instalar app / Adicionar à tela inicial.');
+      return;
+    }
+    promptInstalar.prompt();
+    await promptInstalar.userChoice;
+    promptInstalar = null;
+  });
 }
 
-function iniciarApp() {
+function initPwa() {
+  if (!('serviceWorker' in navigator)) return;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    promptInstalar = e;
+    $('#btnInstalar')?.removeAttribute('hidden');
+  });
+  navigator.serviceWorker.register('./sw.js').then((reg) => {
+    reg.addEventListener('updatefound', () => {
+      const nw = reg.installing;
+      nw?.addEventListener('statechange', () => {
+        if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+          toast('Nova versão disponível — recarregue a página.');
+        }
+      });
+    });
+  }).catch(() => {});
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible' || !api()?.syncConfigurado?.()) return;
+    atualizarChipSync('sync');
+    api()
+      ?.syncBaixar?.({ silencioso: true })
+      .then(() => refreshUi())
+      .then(() => atualizarChipSync('ok'))
+      .catch(() => atualizarChipSync('erro'));
+  });
+}
+
+async function iniciarApp() {
   if (location.protocol === 'file:') return;
+  if (!api()) {
+    mostrarErroBoot('Erro: diario.js não carregou. Use o servidor local (porta 8786).');
+    return;
+  }
+  api()._notifyChange = refreshUi;
+  api()._syncStatus = atualizarChipSync;
   aplicarTema(carregarTema());
   renderSidebarNav();
   renderBottomNav();
   renderMenuSheet();
-  renderDashboard();
   bindNav();
+  initPwa();
+  atualizarChipSync('sync');
+  try {
+    await api().init();
+  } catch (e) {
+    console.warn('init', e);
+    atualizarChipSync('erro');
+  }
+  refreshUi();
   setView('dashboard');
   const toggle = $('#toggleDark');
   if (toggle) toggle.classList.toggle('is-on', document.documentElement.getAttribute('data-theme') === 'dark');
+  renderConfigSync();
+}
+
+function mostrarErroBoot(msg) {
+  const el = $('#bootErro');
+  if (el) {
+    el.hidden = false;
+    el.textContent = msg;
+  }
 }
 
 if (document.readyState === 'loading') {
